@@ -1,6 +1,5 @@
 """UK Government RIMNET Catalogue."""
 
-import logging
 import re
 from typing import TYPE_CHECKING
 
@@ -21,7 +20,6 @@ if TYPE_CHECKING:
 
     from fsspec import AbstractFileSystem
 
-_logger = logging.getLogger(__name__)
 
 _PUBLICATION_URL = "https://www.gov.uk/government/publications/ambient-gamma-radiation-dose-rates-across-the-uk"
 _ASSET_HOST = "assets.publishing.service.gov.uk"
@@ -110,7 +108,6 @@ def _parse_releases(html: str) -> set[DataRelease]:
         href = link.get("href")
         if href is None or not isinstance(href, str) or _ASSET_HOST not in href:
             continue
-        _logger.debug("Found candidate asset URL: %s", href)
         release = _parse_url(href)
         if release is not None:
             releases.append(release)
