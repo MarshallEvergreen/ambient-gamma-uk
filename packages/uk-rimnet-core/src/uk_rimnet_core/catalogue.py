@@ -102,7 +102,6 @@ def _parse_url(url: str) -> DataRelease | None:
         )
 
     if annual_match := _ANNUAL_FILENAME_RE.match(filename):
-        (year_str,) = annual_match.groups()
-        return AnnualRelease(year=int(year_str), url=url)
+        return AnnualRelease(year=int(annual_match.group(1)), url=url)
 
     return None
