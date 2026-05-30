@@ -2,7 +2,7 @@
 
 import httpx
 import pytest
-from uk_rimnet_core.catalogue import _PUBLICATION_URL, GovUkCatalogueClient
+from uk_rimnet_core.client import _PUBLICATION_URL, GovUkCatalogueClient
 from uk_rimnet_core.models import AnnualRelease, MonthlyRelease
 
 
@@ -23,7 +23,9 @@ class _MockTransport(httpx.BaseTransport):
 
 class TestGovUkCatalogueClient:  # noqa: D101
     def _make_client(self, html: str) -> GovUkCatalogueClient:
-        return GovUkCatalogueClient(client=httpx.Client(transport=_MockTransport(html)))
+        return GovUkCatalogueClient(
+            client=httpx.Client(transport=_MockTransport(html)),
+        )
 
     def test_returns_fixed_and_mobile_monthly_releases(self) -> None:
 
@@ -134,7 +136,9 @@ class TestGovUkCatalogueClient:  # noqa: D101
             def handle_request(self, request: httpx.Request) -> httpx.Response:  # noqa: ARG002
                 return httpx.Response(503)
 
-        client = GovUkCatalogueClient(client=httpx.Client(transport=_ErrorTransport()))
+        client = GovUkCatalogueClient(
+            client=httpx.Client(transport=_ErrorTransport()),
+        )
 
         # Act / Assert
         try:

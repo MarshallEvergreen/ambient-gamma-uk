@@ -1,5 +1,3 @@
-"""Async downloader for RIMNET data releases."""
-
 import asyncio
 import logging
 from typing import TYPE_CHECKING
@@ -24,7 +22,7 @@ class Downloader:
 
     """
 
-    def __init__(self, client: httpx.AsyncClient | None = None) -> None:  # noqa: D107
+    def __init__(self, client: httpx.AsyncClient | None = None) -> None:
         self._client = client or httpx.AsyncClient()
 
     async def download_all(
@@ -32,7 +30,7 @@ class Downloader:
         releases: set[DataRelease],
         destination: str,
         fs: AbstractFileSystem,
-    ) -> list[str]:
+    ) -> Sequence[str]:
         """Download all releases concurrently, skipping files that already exist.
 
         Args:

@@ -6,7 +6,7 @@ import httpx
 import pytest
 from fsspec.implementations.dirfs import DirFileSystem
 from fsspec.implementations.local import LocalFileSystem
-from uk_rimnet_core.downloader import Downloader
+from uk_rimnet_core._downloader import Downloader
 from uk_rimnet_core.models import AnnualRelease, MonthlyRelease
 
 if TYPE_CHECKING:

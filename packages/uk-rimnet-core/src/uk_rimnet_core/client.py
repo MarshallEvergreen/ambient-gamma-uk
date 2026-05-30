@@ -2,16 +2,24 @@
 
 import logging
 import re
+from typing import TYPE_CHECKING
 
 import httpx
 from bs4 import BeautifulSoup
+from fsspec.implementations.local import LocalFileSystem
 
+from uk_rimnet_core._downloader import Downloader
 from uk_rimnet_core.models import (
     AnnualRelease,
     DataRelease,
     MonitorType,
     MonthlyRelease,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from fsspec import AbstractFileSystem
 
 _logger = logging.getLogger(__name__)
 
@@ -53,8 +61,14 @@ class GovUkCatalogueClient:
 
     """
 
-    def __init__(self, client: httpx.Client | None = None) -> None:  # noqa: D107
-        self._client = client or httpx.Client()
+    def __init__(  # noqa: D107
+        self,
+        client: httpx.Client | None = None,
+        async_client: httpx.AsyncClient | None = None,
+    ) -> None:
+        self._sync_client = client or httpx.Client()
+        self._async_client = async_client or httpx.AsyncClient()
+        self._downloader = Downloader(self._async_client)
 
     def list_releases(self) -> set[DataRelease]:
         """Fetch and parse the GOV.UK publication page to list all releases.
@@ -66,9 +80,22 @@ class GovUkCatalogueClient:
             httpx.HTTPStatusError: If the publication page returns a non-2xx response.
 
         """  # noqa: E501
-        response = self._client.get(_PUBLICATION_URL)
+        response = self._sync_client.get(_PUBLICATION_URL)
         response.raise_for_status()
         return _parse_releases(response.text)
+
+    async def download_releases(  # noqa: D102
+        self,
+        destination: str,
+        fs: AbstractFileSystem | None = None,
+    ) -> Sequence[str]:
+        fs = fs or LocalFileSystem()
+        releases = self.list_releases()
+        return await self._downloader.download_all(
+            releases=releases,
+            destination=destination,
+            fs=fs,
+        )
 
 
 def _parse_releases(html: str) -> set[DataRelease]:
