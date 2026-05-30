@@ -103,6 +103,38 @@ class TestGovUkCatalogueClientListReleases:  # noqa: D101
         monthly = [r for r in releases if isinstance(r, MonthlyRelease)]
         assert {r.month for r in monthly} == {1, 3, 4}
 
+    def test_returns_monthly_release_for_full_month_name_in_filename(self) -> None:
+
+        # Arrange
+        html = _make_html(
+            "https://assets.publishing.service.gov.uk/media/abc/June_2025_ambient_gamma_dose_rates_across_the_UK__Fixed_RREMS_monitors_.csv",
+            "https://assets.publishing.service.gov.uk/media/def/July_2025_ambient_gamma_dose_rates_across_the_UK__mobile_RREMS_monitors_.csv",
+        )
+
+        # Act
+        releases = self._make_client(html).list_releases()
+
+        # Assert
+        assert len(releases) == 2
+        assert (
+            MonthlyRelease(
+                year=2025,
+                month=6,
+                monitor_type="fixed",
+                url="https://assets.publishing.service.gov.uk/media/abc/June_2025_ambient_gamma_dose_rates_across_the_UK__Fixed_RREMS_monitors_.csv",
+            )
+            in releases
+        )
+        assert (
+            MonthlyRelease(
+                year=2025,
+                month=7,
+                monitor_type="mobile",
+                url="https://assets.publishing.service.gov.uk/media/def/July_2025_ambient_gamma_dose_rates_across_the_UK__mobile_RREMS_monitors_.csv",
+            )
+            in releases
+        )
+
     def test_returns_monthly_release_for_rrems_filename_format(self) -> None:
 
         # Arrange

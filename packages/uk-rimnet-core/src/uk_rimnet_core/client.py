@@ -40,7 +40,7 @@ _MONTH_NAME_TO_INT: dict[str, int] = {
 }
 
 _MONTHLY_FILENAME_RE = re.compile(
-    r"(\w{3})_(\d{4})_ambient_gamma_dose_rates_across_the_UK__"
+    r"(\w{3,4})_(\d{4})_ambient_gamma_dose_rates_across_the_UK__"
     r"(Fixed|mobile)_RREMS_monitors_\.csv$",
     re.IGNORECASE,
 )
@@ -130,7 +130,7 @@ def _make_monthly_release(
     type_str: str,
     url: str,
 ) -> MonthlyRelease | None:
-    month = _MONTH_NAME_TO_INT.get(month_str.lower())
+    month = _MONTH_NAME_TO_INT.get(month_str.lower()[:3])
     if month is None:
         return None
     monitor_type: MonitorType = "fixed" if type_str.lower() == "fixed" else "mobile"
