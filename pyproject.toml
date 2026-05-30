@@ -21,6 +21,7 @@ dev = [
     "loguru>=0.7.3",
     "poethepoet>=0.46.0",
     "pytest>=9.0.3",
+    "pytest-asyncio>=1.4.0",
     "ruff>=0.15.15",
     "ty>=0.0.40",
 ]
@@ -30,13 +31,17 @@ all = "error"
 
 [tool.pytest.ini_options]
 testpaths = ["packages"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+target-version = "py314"
 
 [tool.ruff.lint]
 select = ["ALL"]
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = [
-    "D102",     # missing docstring in public method
-    "S101",     # use of assert
-    "PLR2004",  # magic value in comparison
+    "D102",    # missing docstring in public method
+    "S101",    # use of assert
+    "PLR2004", # magic value in comparison
 ]

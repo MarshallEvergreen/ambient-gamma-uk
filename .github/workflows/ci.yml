@@ -25,5 +25,8 @@ jobs:
       - name: Lint
         run: uv run poe ci:lint
 
+      - name: Type Check
+        run: uv run poe check
+
       - name: Test
         run: uv run poe test

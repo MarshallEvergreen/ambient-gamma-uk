@@ -76,7 +76,7 @@ def _parse_releases(html: str) -> set[DataRelease]:
     releases: list[DataRelease] = []
     for link in soup.find_all("a", href=True):
         href = link.get("href")
-        if href is None or _ASSET_HOST not in href:
+        if href is None or not isinstance(href, str) or _ASSET_HOST not in href:
             continue
         _logger.debug("Found candidate asset URL: %s", href)
         release = _parse_url(href)
