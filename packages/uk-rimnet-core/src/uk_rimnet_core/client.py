@@ -48,7 +48,12 @@ _MONTHLY_FILENAME_RE = re.compile(
 )
 
 _ANNUAL_FILENAME_RE = re.compile(
-    r"(\d{4})-ambient-gamma-radiation-dose-rates-across-the-uk\.zip$",
+    r"(\d{4})[-_]ambient[-_]gamma[-_]radiation[-_]dose[-_]rates[-_]across[-_]the[-_]uk\.zip$",
+    re.IGNORECASE,
+)
+
+_ANNUAL_RREMS_FILENAME_RE = re.compile(
+    r"ambient-gamma-dose-rates-rrems-monitors-(\d{4})\.zip$",
     re.IGNORECASE,
 )
 
@@ -129,6 +134,9 @@ def _parse_url(url: str) -> DataRelease | None:
         )
 
     if annual_match := _ANNUAL_FILENAME_RE.match(filename):
+        return AnnualRelease(year=int(annual_match.group(1)), url=url)
+
+    if annual_match := _ANNUAL_RREMS_FILENAME_RE.match(filename):
         return AnnualRelease(year=int(annual_match.group(1)), url=url)
 
     return None

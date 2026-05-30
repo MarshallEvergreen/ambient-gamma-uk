@@ -96,6 +96,46 @@ class TestGovUkCatalogueClient:  # noqa: D101
             in releases
         )
 
+    def test_returns_annual_release_for_underscore_zip_url(self) -> None:
+
+        # Arrange
+        html = _make_html(
+            "https://assets.publishing.service.gov.uk/media/5a84402ee5274a2e8ab5a3d3/2015_ambient_gamma_radiation_dose_rates_across_the_UK.zip",
+        )
+
+        # Act
+        releases = self._make_client(html).list_releases()
+
+        # Assert
+        assert len(releases) == 1
+        assert (
+            AnnualRelease(
+                year=2015,
+                url="https://assets.publishing.service.gov.uk/media/5a84402ee5274a2e8ab5a3d3/2015_ambient_gamma_radiation_dose_rates_across_the_UK.zip",
+            )
+            in releases
+        )
+
+    def test_returns_annual_release_for_rrems_zip_url(self) -> None:
+
+        # Arrange
+        html = _make_html(
+            "https://assets.publishing.service.gov.uk/media/6615811d2138736672031baa/ambient-gamma-dose-rates-rrems-monitors-2023.zip",
+        )
+
+        # Act
+        releases = self._make_client(html).list_releases()
+
+        # Assert
+        assert len(releases) == 1
+        assert (
+            AnnualRelease(
+                year=2023,
+                url="https://assets.publishing.service.gov.uk/media/6615811d2138736672031baa/ambient-gamma-dose-rates-rrems-monitors-2023.zip",
+            )
+            in releases
+        )
+
     def test_returns_mix_of_monthly_and_annual_releases(self) -> None:
 
         # Arrange
