@@ -1,9 +1,25 @@
 """Cataloguing tests."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import httpx
+
+if TYPE_CHECKING:
+    from pathlib import Path
 import pytest
+from fsspec.implementations.dirfs import DirFileSystem
+from fsspec.implementations.local import LocalFileSystem
 from uk_rimnet_core.client import _PUBLICATION_URL, GovUkCatalogueClient
 from uk_rimnet_core.models import AnnualRelease, MonthlyRelease
+
+_CSV_CONTENT = b"reading_date,latitude,longitude,reading,units,monitor_location\n"
+_ZIP_CONTENT = b"PK\x03\x04fake zip content"
+
+_FIXED_URL = "https://assets.publishing.service.gov.uk/media/abc/Apr_2026_ambient_gamma_dose_rates_across_the_UK__Fixed_RREMS_monitors_.csv"
+_MOBILE_URL = "https://assets.publishing.service.gov.uk/media/def/Apr_2026_ambient_gamma_dose_rates_across_the_UK__mobile_RREMS_monitors_.csv"
+_ANNUAL_URL = "https://assets.publishing.service.gov.uk/media/ghi/2020-ambient-gamma-radiation-dose-rates-across-the-uk.zip"
 
 
 def _make_html(*hrefs: str) -> str:
@@ -21,7 +37,18 @@ class _MockTransport(httpx.BaseTransport):
         return httpx.Response(404)
 
 
-class TestGovUkCatalogueClient:  # noqa: D101
+class _MockAsyncTransport(httpx.AsyncBaseTransport):
+    def __init__(self, responses: dict[str, bytes]) -> None:
+        self._responses = responses
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        content = self._responses.get(str(request.url))
+        if content is not None:
+            return httpx.Response(200, content=content)
+        return httpx.Response(404)
+
+
+class TestGovUkCatalogueClientListReleases:  # noqa: D101
     def _make_client(self, html: str) -> GovUkCatalogueClient:
         return GovUkCatalogueClient(
             client=httpx.Client(transport=_MockTransport(html)),
@@ -186,3 +213,119 @@ class TestGovUkCatalogueClient:  # noqa: D101
             pytest.fail("expected HTTPStatusError")
         except httpx.HTTPStatusError:
             pass
+
+
+class TestGovUkCatalogueClientDownloadReleases:  # noqa: D101
+    @pytest.fixture(autouse=True)
+    def _setup(self, tmp_path: Path) -> None:
+        self.fs = DirFileSystem(fs=LocalFileSystem(), path=tmp_path.as_posix())
+
+    def _make_client(
+        self,
+        html: str,
+        file_responses: dict[str, bytes],
+    ) -> GovUkCatalogueClient:
+        return GovUkCatalogueClient(
+            client=httpx.Client(transport=_MockTransport(html)),
+            async_client=httpx.AsyncClient(
+                transport=_MockAsyncTransport(file_responses),
+            ),
+        )
+
+    @pytest.mark.asyncio
+    async def test_downloads_csv_to_destination(self) -> None:
+
+        # Arrange
+        client = self._make_client(_make_html(_FIXED_URL), {_FIXED_URL: _CSV_CONTENT})
+
+        # Act
+        paths = await client.download_releases("/output", self.fs)
+
+        # Assert
+        assert len(paths) == 1
+        assert (
+            paths[0]
+            == "/output/Apr_2026_ambient_gamma_dose_rates_across_the_UK__Fixed_RREMS_monitors_.csv"  # noqa: E501
+        )
+        assert self.fs.cat(paths[0]) == _CSV_CONTENT
+
+    @pytest.mark.asyncio
+    async def test_downloads_multiple_releases(self) -> None:
+
+        # Arrange
+        client = self._make_client(
+            _make_html(_FIXED_URL, _MOBILE_URL),
+            {_FIXED_URL: _CSV_CONTENT, _MOBILE_URL: _CSV_CONTENT},
+        )
+
+        # Act
+        paths = await client.download_releases("/output", self.fs)
+
+        # Assert
+        assert len(paths) == 2
+        assert set(paths) == {
+            "/output/Apr_2026_ambient_gamma_dose_rates_across_the_UK__Fixed_RREMS_monitors_.csv",
+            "/output/Apr_2026_ambient_gamma_dose_rates_across_the_UK__mobile_RREMS_monitors_.csv",
+        }
+
+    @pytest.mark.asyncio
+    async def test_downloads_annual_zip(self) -> None:
+
+        # Arrange
+        client = self._make_client(_make_html(_ANNUAL_URL), {_ANNUAL_URL: _ZIP_CONTENT})
+
+        # Act
+        paths = await client.download_releases("/output", self.fs)
+
+        # Assert
+        assert len(paths) == 1
+        assert (
+            paths[0]
+            == "/output/2020-ambient-gamma-radiation-dose-rates-across-the-uk.zip"
+        )
+        assert self.fs.cat(paths[0]) == _ZIP_CONTENT
+
+    @pytest.mark.asyncio
+    async def test_creates_destination_directory_if_missing(self) -> None:
+
+        # Arrange
+        client = self._make_client(_make_html(_FIXED_URL), {_FIXED_URL: _CSV_CONTENT})
+
+        # Act
+        await client.download_releases("/nested/output", self.fs)
+
+        # Assert
+        assert self.fs.isdir("/nested/output")
+
+    @pytest.mark.asyncio
+    async def test_skips_file_that_already_exists(self) -> None:
+
+        # Arrange
+        client = self._make_client(
+            _make_html(_FIXED_URL),
+            {},
+        )  # no responses — would 404 if called
+        existing_path = "/output/Apr_2026_ambient_gamma_dose_rates_across_the_UK__Fixed_RREMS_monitors_.csv"  # noqa: E501
+        self.fs.makedirs("/output", exist_ok=True)
+        with self.fs.open(existing_path, "wb") as f:
+            f.write(_CSV_CONTENT)
+
+        # Act
+        paths = await client.download_releases("/output", self.fs)
+
+        # Assert
+        assert paths == [existing_path]
+        assert self.fs.cat(existing_path) == _CSV_CONTENT
+
+    @pytest.mark.asyncio
+    async def test_raises_on_failed_download(self) -> None:
+
+        # Arrange
+        client = self._make_client(
+            _make_html(_FIXED_URL),
+            {},
+        )  # no responses — all return 404
+
+        # Act / Assert
+        with pytest.raises(ExceptionGroup):
+            await client.download_releases("/output", self.fs)
