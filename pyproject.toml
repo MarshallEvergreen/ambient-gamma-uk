@@ -9,8 +9,8 @@ all = [{ ref = "fmt" }, { ref = "lint" }, { ref = "check" }, { ref = "test" }]
 
 echo = "echo ${PWD}"
 
-"ci:fmt" = "ruff format --check ${PWD}"        # fail if not formatted
-"ci:lint" = "ruff check ${PWD}"
+"ci-fmt" = "ruff format --check ${PWD}"        # fail if not formatted
+"ci-lint" = "ruff check ${PWD}"
 "sync" = "uv sync --all-packages --all-groups"
 
 [tool.uv.workspace]
