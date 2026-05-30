@@ -103,6 +103,60 @@ class TestGovUkCatalogueClientListReleases:  # noqa: D101
         monthly = [r for r in releases if isinstance(r, MonthlyRelease)]
         assert {r.month for r in monthly} == {1, 3, 4}
 
+    def test_returns_monthly_release_for_rrems_filename_format(self) -> None:
+
+        # Arrange
+        html = _make_html(
+            "https://assets.publishing.service.gov.uk/media/67cfef51bc1f4a3395b33cc4/mobile-rrems-monitors-feb-2025-ambient-gamma-dose-rates.csv",
+        )
+
+        # Act
+        releases = self._make_client(html).list_releases()
+
+        # Assert
+        assert len(releases) == 1
+        assert (
+            MonthlyRelease(
+                year=2025,
+                month=2,
+                monitor_type="mobile",
+                url="https://assets.publishing.service.gov.uk/media/67cfef51bc1f4a3395b33cc4/mobile-rrems-monitors-feb-2025-ambient-gamma-dose-rates.csv",
+            )
+            in releases
+        )
+
+    def test_returns_monthly_release_for_rrems_reversed_filename_format(self) -> None:
+
+        # Arrange
+        html = _make_html(
+            "https://assets.publishing.service.gov.uk/media/6978d1a51c24881f40a4d6b1/ambient-gamma-dose-rates-mobile-rrems-monitors-nov-2025.csv",
+            "https://assets.publishing.service.gov.uk/media/6978d12f5da1fd4ddea98c33/ambient-gamma-dose-rates-fixed-rrems-monitors-dec-2025.csv",
+        )
+
+        # Act
+        releases = self._make_client(html).list_releases()
+
+        # Assert
+        assert len(releases) == 2
+        assert (
+            MonthlyRelease(
+                year=2025,
+                month=11,
+                monitor_type="mobile",
+                url="https://assets.publishing.service.gov.uk/media/6978d1a51c24881f40a4d6b1/ambient-gamma-dose-rates-mobile-rrems-monitors-nov-2025.csv",
+            )
+            in releases
+        )
+        assert (
+            MonthlyRelease(
+                year=2025,
+                month=12,
+                monitor_type="fixed",
+                url="https://assets.publishing.service.gov.uk/media/6978d12f5da1fd4ddea98c33/ambient-gamma-dose-rates-fixed-rrems-monitors-dec-2025.csv",
+            )
+            in releases
+        )
+
     def test_returns_annual_release_for_zip_url(self) -> None:
 
         # Arrange

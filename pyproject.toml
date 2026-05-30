@@ -41,6 +41,7 @@ target-version = "py314"
 select = ["ALL"]
 
 [tool.ruff.lint.per-file-ignores]
+"notebooks/**" = ["ALL"]
 "**/tests/**" = [
     "D102",    # missing docstring in public method
     "S101",    # use of assert
