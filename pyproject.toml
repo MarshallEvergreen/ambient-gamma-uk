@@ -17,7 +17,12 @@ echo = "echo ${PWD}"
 members = ["packages/*"]
 
 [dependency-groups]
-dev = ["poethepoet>=0.46.0", "ruff>=0.15.15", "ty>=0.0.40"]
+dev = [
+    "poethepoet>=0.46.0",
+    "pytest>=9.0.3",
+    "ruff>=0.15.15",
+    "ty>=0.0.40",
+]
 
 [tool.ty.rules]
 all = "error"
