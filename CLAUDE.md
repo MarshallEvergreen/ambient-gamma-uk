@@ -14,6 +14,7 @@ Write code as a principal engineer. This is not a scripting project. The team's 
 - **Clean architecture over convenience.** Separate concerns — I/O, parsing, domain logic, and presentation belong in distinct layers. Avoid god objects and functions that do too many things.
 - **Extensibility by design.** Prefer abstractions (protocols, abstract base classes) at boundaries so that implementations can be swapped. Design for the caller, not the implementation.
 - **Testability is a first-class constraint.** If code is hard to test, that is a design smell. Inject dependencies; avoid hidden global state.
+- **Docstrings on all public classes and methods.** Use Google docstring style. Private functions and methods (`_` prefix) do not require docstrings.
 
 ## Testing philosophy
 
@@ -23,6 +24,8 @@ Test the public API of the system, not its implementation details.
 - Internal refactors must not require test changes. If a test breaks because an internal function was renamed or restructured, the test was written at the wrong level.
 - Use appropriate test doubles (fakes, stubs) at system boundaries (network, filesystem) to isolate behaviour — but keep these at the edges, not threaded through unit internals.
 - Prefer fewer, well-constructed behaviour tests over many fine-grained implementation tests.
+- **Test structure mirrors C++ gtest fixtures.** Use test classes with utility/helper methods instead of pytest fixtures. A test class groups related scenarios; private helper methods on the class construct the system under test and build test inputs. Pytest fixtures are not used.
+- **All tests follow the Arrange / Act / Assert pattern**, with each section marked by a `# Arrange`, `# Act`, and `# Assert` comment. For tests where act and assert cannot be separated (e.g. asserting an exception is raised), use `# Act / Assert`.
 - **Patching is explicitly forbidden.** `unittest.mock.patch` and monkey-patching bypass the public API and couple tests to internal import paths and implementation details. If something needs to be substituted in a test, the design should accommodate that through dependency injection or a protocol boundary — not by reaching inside the module and swapping internals at runtime.
 
 ## Workspace structure
