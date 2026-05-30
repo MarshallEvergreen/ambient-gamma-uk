@@ -1,0 +1,1 @@
+"""Rimnet core tests."""

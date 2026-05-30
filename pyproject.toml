@@ -2,7 +2,7 @@
 # run with eg `uv run poe fmt`
 fmt = "ruff format ${PWD}"
 lint = "ruff check --fix ${PWD}"
-check = "basedpyright ${PWD}"
+check = "ty check ${PWD}"
 test = "pytest ${PWD}"
 # run all the above
 all = [{ ref = "fmt" }, { ref = "lint" }, { ref = "check" }, { ref = "test" }]
@@ -18,6 +18,7 @@ members = ["packages/*"]
 
 [dependency-groups]
 dev = [
+    "loguru>=0.7.3",
     "poethepoet>=0.46.0",
     "pytest>=9.0.3",
     "ruff>=0.15.15",
@@ -27,5 +28,15 @@ dev = [
 [tool.ty.rules]
 all = "error"
 
+[tool.pytest.ini_options]
+testpaths = ["packages"]
+
 [tool.ruff.lint]
 select = ["ALL"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = [
+    "D102",     # missing docstring in public method
+    "S101",     # use of assert
+    "PLR2004",  # magic value in comparison
+]
