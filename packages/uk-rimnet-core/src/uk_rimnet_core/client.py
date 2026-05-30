@@ -39,30 +39,31 @@ _MONTH_NAME_TO_INT: dict[str, int] = {
     "dec": 12,
 }
 
-_MONTHLY_FILENAME_RE = re.compile(
-    r"(\w{3,4})_(\d{4})_ambient_gamma_dose_rates_across_the_UK__"
-    r"(Fixed|mobile)_RREMS_monitors_\.csv$",
-    re.IGNORECASE,
+_MONTHLY_FILENAME_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(
+        r"(?P<month>\w{3,4})_(?P<year>\d{4})_ambient_gamma_dose_rates_across_the_UK__"
+        r"(?P<type>Fixed|mobile)_RREMS_monitors_\.csv$",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(?P<type>fixed|mobile)-rrems-monitors-(?P<month>\w{3,4})-(?P<year>\d{4})-ambient-gamma-dose-rates\.csv$",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"ambient-gamma-dose-rates-(?P<type>fixed|mobile)-rrems-monitors-(?P<month>\w{3,4})-(?P<year>\d{4})\.csv$",
+        re.IGNORECASE,
+    ),
 )
 
-_MONTHLY_RREMS_FILENAME_RE = re.compile(
-    r"(fixed|mobile)-rrems-monitors-(\w{3})-(\d{4})-ambient-gamma-dose-rates\.csv$",
-    re.IGNORECASE,
-)
-
-_MONTHLY_RREMS_FILENAME_RE2 = re.compile(
-    r"ambient-gamma-dose-rates-(fixed|mobile)-rrems-monitors-(\w{3})-(\d{4})\.csv$",
-    re.IGNORECASE,
-)
-
-_ANNUAL_FILENAME_RE = re.compile(
-    r"(\d{4})[-_]ambient[-_]gamma[-_]radiation[-_]dose[-_]rates[-_]across[-_]the[-_]uk\.zip$",
-    re.IGNORECASE,
-)
-
-_ANNUAL_RREMS_FILENAME_RE = re.compile(
-    r"ambient-gamma-dose-rates-rrems-monitors-(\d{4})\.zip$",
-    re.IGNORECASE,
+_ANNUAL_FILENAME_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(
+        r"(?P<year>\d{4})[-_]ambient[-_]gamma[-_]radiation[-_]dose[-_]rates[-_]across[-_]the[-_]uk\.zip$",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"ambient-gamma-dose-rates-rrems-monitors-(?P<year>\d{4})\.zip$",
+        re.IGNORECASE,
+    ),
 )
 
 
@@ -145,22 +146,17 @@ def _make_monthly_release(
 def _parse_url(url: str) -> DataRelease | None:
     filename = url.rsplit("/", 1)[-1]
 
-    if m := _MONTHLY_FILENAME_RE.match(filename):
-        month_str, year_str, type_str = m.groups()
-        return _make_monthly_release(month_str, year_str, type_str, url)
+    for pattern in _MONTHLY_FILENAME_PATTERNS:
+        if m := pattern.match(filename):
+            return _make_monthly_release(
+                m.group("month"),
+                m.group("year"),
+                m.group("type"),
+                url,
+            )
 
-    if m := _MONTHLY_RREMS_FILENAME_RE.match(filename):
-        type_str, month_str, year_str = m.groups()
-        return _make_monthly_release(month_str, year_str, type_str, url)
-
-    if m := _MONTHLY_RREMS_FILENAME_RE2.match(filename):
-        type_str, month_str, year_str = m.groups()
-        return _make_monthly_release(month_str, year_str, type_str, url)
-
-    if m := _ANNUAL_FILENAME_RE.match(filename):
-        return AnnualRelease(year=int(m.group(1)), url=url)
-
-    if m := _ANNUAL_RREMS_FILENAME_RE.match(filename):
-        return AnnualRelease(year=int(m.group(1)), url=url)
+    for pattern in _ANNUAL_FILENAME_PATTERNS:
+        if m := pattern.match(filename):
+            return AnnualRelease(year=int(m.group("year")), url=url)
 
     return None
