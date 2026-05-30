@@ -65,7 +65,7 @@ class GovUkCatalogueClient:
         Raises:
             httpx.HTTPStatusError: If the publication page returns a non-2xx response.
 
-        """
+        """  # noqa: E501
         response = self._client.get(_PUBLICATION_URL)
         response.raise_for_status()
         return _parse_releases(response.text)
@@ -95,7 +95,10 @@ def _parse_url(url: str) -> DataRelease | None:
             return None
         monitor_type: MonitorType = "fixed" if type_str.lower() == "fixed" else "mobile"
         return MonthlyRelease(
-            year=int(year_str), month=month, monitor_type=monitor_type, url=url
+            year=int(year_str),
+            month=month,
+            monitor_type=monitor_type,
+            url=url,
         )
 
     if annual_match := _ANNUAL_FILENAME_RE.match(filename):
