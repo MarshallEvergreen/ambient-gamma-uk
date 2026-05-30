@@ -55,10 +55,7 @@ class TestDownloader:  # noqa: D101
 
         # Assert
         assert len(paths) == 1
-        assert (
-            paths[0]
-            == "/output/Apr_2026_ambient_gamma_dose_rates_across_the_UK__Fixed_RREMS_monitors_.csv"  # noqa: E501
-        )
+        assert paths[0] == "/output/2026_04_fixed.csv"
         assert self.fs.cat(paths[0]) == _CSV_CONTENT
 
     @pytest.mark.asyncio
@@ -79,8 +76,8 @@ class TestDownloader:  # noqa: D101
         # Assert
         assert len(paths) == 2
         assert set(paths) == {
-            "/output/Apr_2026_ambient_gamma_dose_rates_across_the_UK__Fixed_RREMS_monitors_.csv",
-            "/output/Apr_2026_ambient_gamma_dose_rates_across_the_UK__mobile_RREMS_monitors_.csv",
+            "/output/2026_04_fixed.csv",
+            "/output/2026_04_mobile.csv",
         }
 
     @pytest.mark.asyncio
@@ -97,10 +94,7 @@ class TestDownloader:  # noqa: D101
 
         # Assert
         assert len(paths) == 1
-        assert (
-            paths[0]
-            == "/output/2020-ambient-gamma-radiation-dose-rates-across-the-uk.zip"
-        )
+        assert paths[0] == "/output/2020.zip"
         assert self.fs.cat(paths[0]) == _ZIP_CONTENT
 
     @pytest.mark.asyncio
@@ -126,7 +120,7 @@ class TestDownloader:  # noqa: D101
             MonthlyRelease(year=2026, month=4, monitor_type="fixed", url=_FIXED_URL),
         }
         downloader = self.make_downloader({})  # no responses — would 404 if called
-        existing_path = "/output/Apr_2026_ambient_gamma_dose_rates_across_the_UK__Fixed_RREMS_monitors_.csv"  # noqa: E501
+        existing_path = "/output/2026_04_fixed.csv"
         self.fs.makedirs("/output", exist_ok=True)
         with self.fs.open(existing_path, "wb") as f:
             f.write(_CSV_CONTENT)

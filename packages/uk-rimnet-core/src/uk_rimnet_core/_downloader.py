@@ -80,7 +80,7 @@ class Downloader:
         fs: AbstractFileSystem,
         progress: Progress,
     ) -> str:
-        filename = release.url.rsplit("/", 1)[-1]
+        filename = release.filename
         path = f"{destination}/{filename}"
         if fs.exists(path):
             return path

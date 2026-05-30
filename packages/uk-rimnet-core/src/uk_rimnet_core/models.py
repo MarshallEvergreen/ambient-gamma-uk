@@ -1,5 +1,6 @@
 """Data Release Models."""
 
+from abc import ABC, abstractmethod
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
@@ -7,11 +8,15 @@ from pydantic import BaseModel, Field
 type MonitorType = Literal["fixed", "mobile"]
 
 
-class _Release(BaseModel):
+class _Release(BaseModel, ABC):
     url: str
 
     def __hash__(self) -> int:
         return hash(self.url)
+
+    @property
+    @abstractmethod
+    def filename(self) -> str: ...
 
 
 class MonthlyRelease(_Release):
@@ -31,6 +36,11 @@ class MonthlyRelease(_Release):
     month: int
     monitor_type: MonitorType
 
+    @property
+    def filename(self) -> str:
+        """Return a canonical filename for this release."""
+        return f"{self.year}_{self.month:02d}_{self.monitor_type}.csv"
+
 
 class AnnualRelease(_Release):
     """An annual data release bundling all monitors for a full year as a ZIP.
@@ -44,6 +54,11 @@ class AnnualRelease(_Release):
 
     kind: Literal["annual"] = "annual"
     year: int
+
+    @property
+    def filename(self) -> str:
+        """Return a canonical filename for this release."""
+        return f"{self.year}.zip"
 
 
 type DataRelease = Annotated[
