@@ -1,2 +1,26 @@
+[tool.poe.tasks]
+# run with eg `uv run poe fmt`
+fmt = "ruff format ${PWD}"
+lint = "ruff check --fix ${PWD}"
+check = "basedpyright ${PWD}"
+test = "pytest ${PWD}"
+# run all the above
+all = [{ ref = "fmt" }, { ref = "lint" }, { ref = "check" }, { ref = "test" }]
+
+echo = "echo ${PWD}"
+
+"ci:fmt" = "ruff format --check ${PWD}"        # fail if not formatted
+"ci:lint" = "ruff check ${PWD}"
+"sync" = "uv sync --all-packages --all-groups"
+
 [tool.uv.workspace]
 members = ["packages/*"]
+
+[dependency-groups]
+dev = ["poethepoet>=0.46.0", "ruff>=0.15.15", "ty>=0.0.40"]
+
+[tool.ty.rules]
+all = "error"
+
+[tool.ruff.lint]
+select = ["ALL"]
