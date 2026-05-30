@@ -1,2 +1,1 @@
-def test():
-    return 1
+"""uk-rimnet-core package."""
