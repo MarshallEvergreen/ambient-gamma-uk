@@ -65,3 +65,41 @@ type DataRelease = Annotated[
     MonthlyRelease | AnnualRelease,
     Field(discriminator="kind"),
 ]
+
+
+class AnnualData(BaseModel):
+    """A data release that has been downloaded to local storage."""
+
+    year: int
+
+    quarterly_fixed_data: QuarterlyData | None = None
+    quarterly_mobile_data: QuarterlyData | None = None
+
+    monthly_fixed_data: MonthlyDataFile | None = None
+    monthly_mobile_data: MonthlyDataFile | None = None
+
+
+class QuarterlyData(BaseModel):
+    """A data release that has been downloaded to local storage."""
+
+    q1: str | None
+    q2: str | None
+    q3: str | None
+    q4: str | None
+
+
+class MonthlyDataFile(BaseModel):
+    """A data release that has been downloaded to local storage."""
+
+    jan: str | None
+    feb: str | None
+    mar: str | None
+    apr: str | None
+    may: str | None
+    jun: str | None
+    jul: str | None
+    aug: str | None
+    sep: str | None
+    oct: str | None
+    nov: str | None
+    dec: str | None
