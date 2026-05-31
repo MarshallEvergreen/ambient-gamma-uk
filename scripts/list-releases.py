@@ -3,11 +3,11 @@
 import asyncio
 
 from loguru import logger
-from uk_rimnet_core.client import GovUkCatalogueClient
+from uk_rimnet_core.client import GovUkRIMNETRRMESClient
 
 
 async def _main() -> None:
-    client = GovUkCatalogueClient()
+    client = GovUkRIMNETRRMESClient()
 
     downloads = await client.async_.download_releases(
         destination="/Users/abie/Dev/uk-rimnet/bin",

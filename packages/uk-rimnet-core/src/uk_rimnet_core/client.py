@@ -1,4 +1,4 @@
-"""UK Government RIMNET Catalogue."""
+"""UK Government RIMNET RRMES Client."""
 
 import asyncio
 import re
@@ -67,7 +67,7 @@ _ANNUAL_FILENAME_PATTERNS: tuple[re.Pattern[str], ...] = (
 )
 
 
-class GovUkCatalogueClient:
+class GovUkRIMNETRRMESClient:
     """Scrapes the GOV.UK publication page to discover available data releases.
 
     Args:
@@ -78,7 +78,7 @@ class GovUkCatalogueClient:
     """
 
     class _Async:
-        def __init__(self, parent: GovUkCatalogueClient) -> None:
+        def __init__(self, parent: GovUkRIMNETRRMESClient) -> None:
             self._parent = parent
 
         async def list_releases(self) -> set[DataRelease]:
