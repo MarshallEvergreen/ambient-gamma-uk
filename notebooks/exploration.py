@@ -32,23 +32,19 @@ def _(release_2026):
 
 @app.cell
 def _(pl, release_2025, release_2026):
-    df = None
-    for f in [
-        *release_2025.fixed.ordered_monthly_file_names,
-        *release_2025.mobile.ordered_monthly_file_names,
-        *release_2026.fixed.ordered_monthly_file_names,
-        *release_2026.mobile.ordered_monthly_file_names,
-    ]:
-        _df = pl.read_csv(
+    df = pl.concat([
+        pl.read_csv(
             f,
             encoding="utf8-lossy",
             columns=["latitude", "longitude", "monitor_location"],
-        ).unique(subset=["monitor_location"], keep="last")
-        if df is None:
-            df = _df
-        else:
-            df = df.update(_df, on="monitor_location", how="full")
-
+        ).unique()
+        for f in [
+            *release_2025.fixed.ordered_monthly_file_names,
+            *release_2025.mobile.ordered_monthly_file_names,
+            *release_2026.fixed.ordered_monthly_file_names,
+            *release_2026.mobile.ordered_monthly_file_names,
+        ]
+    ]).unique()
     df
     return (df,)
 
@@ -56,6 +52,7 @@ def _(pl, release_2025, release_2026):
 @app.cell
 def _(df):
     import geopandas as gpd
+    import contextily as ctx
 
     gdf = gpd.GeoDataFrame(
         df.to_pandas(),
@@ -63,7 +60,31 @@ def _(df):
         crs="EPSG:4326",
     )
 
-    gdf.plot(markersize=5, figsize=(10, 8))
+    import folium
+
+    m = folium.Map(
+        location=[54.5, -2],
+        zoom_start=6,
+        tiles="CartoDB positron",
+    )
+
+    # Optical/satellite basemap
+    folium.TileLayer(
+        tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        attr="Esri",
+        name="Satellite",
+    ).add_to(m)
+
+    for _, row in gdf.iterrows():
+        folium.CircleMarker(
+            location=[row.geometry.y, row.geometry.x],
+            radius=3,
+            color="blue",
+            fill=True,
+            tooltip=row["monitor_location"],  # shows on hover
+            popup=row["monitor_location"],    # shows on click
+        ).add_to(m)
+    m
     return
 
 
