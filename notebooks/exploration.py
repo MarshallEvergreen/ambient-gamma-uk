@@ -32,19 +32,21 @@ def _(release_2026):
 
 @app.cell
 def _(pl, release_2025, release_2026):
-    df = pl.concat([
-        pl.read_csv(
-            f,
-            encoding="utf8-lossy",
-            columns=["latitude", "longitude", "monitor_location"],
-        ).unique()
-        for f in [
-            *release_2025.fixed.ordered_monthly_file_names,
-            *release_2025.mobile.ordered_monthly_file_names,
-            *release_2026.fixed.ordered_monthly_file_names,
-            *release_2026.mobile.ordered_monthly_file_names,
+    df = pl.concat(
+        [
+            pl.read_csv(
+                f,
+                encoding="utf8-lossy",
+                columns=["latitude", "longitude", "monitor_location"],
+            ).unique()
+            for f in [
+                *release_2025.fixed.ordered_monthly_file_names,
+                *release_2025.mobile.ordered_monthly_file_names,
+                *release_2026.fixed.ordered_monthly_file_names,
+                *release_2026.mobile.ordered_monthly_file_names,
+            ]
         ]
-    ]).unique()
+    ).unique()
     df
     return (df,)
 
@@ -52,7 +54,6 @@ def _(pl, release_2025, release_2026):
 @app.cell
 def _(df):
     import geopandas as gpd
-    import contextily as ctx
 
     gdf = gpd.GeoDataFrame(
         df.to_pandas(),
@@ -82,7 +83,7 @@ def _(df):
             color="blue",
             fill=True,
             tooltip=row["monitor_location"],  # shows on hover
-            popup=row["monitor_location"],    # shows on click
+            popup=row["monitor_location"],  # shows on click
         ).add_to(m)
     m
     return
