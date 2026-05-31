@@ -5,11 +5,67 @@ app = marimo.App(width="medium")
 
 
 @app.cell
-def _():
+async def _():
 
     import polars as pl
+    from loguru import logger
+    from uk_rimnet_core import LocationRegistry
+    from uk_rimnet_core.client import GovUkRIMNETRRMESClient
 
-    return (pl,)
+    client = GovUkRIMNETRRMESClient()
+
+    destination = "/Users/abie/Dev/uk-rimnet/bin"
+
+    releases = await client.async_.download_releases(
+        destination=destination,
+    )
+    release_2025 = releases[-2]
+    release_2026 = releases[-1]
+    return pl, release_2025, release_2026
+
+
+@app.cell
+def _(release_2026):
+    release_2026.fixed.ordered_monthly_file_names
+    return
+
+
+@app.cell
+def _(pl, release_2025, release_2026):
+    df = None
+    for f in [*release_2025.fixed.ordered_monthly_file_names, 
+              *release_2025.mobile.ordered_monthly_file_names,
+              *release_2026.fixed.ordered_monthly_file_names,
+              *release_2026.mobile.ordered_monthly_file_names,
+             ]:
+        _df = pl.read_csv(f, encoding="utf8-lossy", columns=["latitude", "longitude", "monitor_location"]).unique(subset=["monitor_location"], keep="last")
+        if df is None:
+            df = _df
+        else:
+            df = df.update(_df, on="monitor_location", how="full")
+
+    df
+    return (df,)
+
+
+@app.cell
+def _(df):
+    import geopandas as gpd
+
+    gdf = gpd.GeoDataFrame(
+        df.to_pandas(),
+        geometry=gpd.points_from_xy(df["longitude"], df["latitude"], crs="EPSG:4326"),
+        crs="EPSG:4326"
+    )
+
+    gdf.plot(markersize=5, figsize=(10, 8))
+    return
+
+
+@app.cell
+def _(release_2025):
+    release_2025.mobile.ordered_monthly_file_names
+    return
 
 
 @app.cell
@@ -22,6 +78,7 @@ def _(pl):
 @app.cell
 def _(Q1_2010_df):
     Q1_2010_df
+    return
 
 
 @app.cell
@@ -34,6 +91,7 @@ def _(pl):
         encoding="utf8-lossy",
     )
     Q1_2012_df
+    return
 
 
 @app.cell
@@ -46,6 +104,7 @@ def _(pl):
         read_options={"header_row": 6, "skip_rows": 1},
     ).filter(pl.col("Location").is_not_null())
     Q1_2014_df
+    return
 
 
 if __name__ == "__main__":

@@ -84,6 +84,22 @@ class QuarterlyData(BaseModel):
     q4: str | None = None
 
 
+MONTH_FIELDS: dict[int, str] = {
+    1: "jan",
+    2: "feb",
+    3: "mar",
+    4: "apr",
+    5: "may",
+    6: "jun",
+    7: "jul",
+    8: "aug",
+    9: "sep",
+    10: "oct",
+    11: "nov",
+    12: "dec",
+}
+
+
 class MonthlyDataFile(BaseModel):
     """File paths for monthly streaming CSVs.
 
@@ -115,6 +131,15 @@ class MonthlyDataFile(BaseModel):
     oct: str | None = None
     nov: str | None = None
     dec: str | None = None
+
+    @property
+    def ordered_monthly_file_names(self) -> list[str]:
+        """Returns paths for all months with data."""
+        return [
+            getattr(self, m)
+            for m in MONTH_FIELDS.values()
+            if getattr(self, m) is not None
+        ]
 
 
 class AnnualDataError(ValueError):

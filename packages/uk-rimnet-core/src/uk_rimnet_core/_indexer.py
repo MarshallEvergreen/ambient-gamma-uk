@@ -3,6 +3,7 @@
 from typing import TYPE_CHECKING
 
 from uk_rimnet_core.models import (
+    MONTH_FIELDS,
     AnnualYearData,
     MonthlyDataFile,
     MonthlyRelease,
@@ -16,20 +17,6 @@ from uk_rimnet_core.models import (
 if TYPE_CHECKING:
     from uk_rimnet_core.models import DataRelease, MonitorType
 
-_MONTH_FIELDS: dict[int, str] = {
-    1: "jan",
-    2: "feb",
-    3: "mar",
-    4: "apr",
-    5: "may",
-    6: "jun",
-    7: "jul",
-    8: "aug",
-    9: "sep",
-    10: "oct",
-    11: "nov",
-    12: "dec",
-}
 
 _QUARTER_PATTERNS: dict[int, tuple[str, ...]] = {
     1: ("q1", "quarter-1", "quarter_1", "jan-mar"),
@@ -70,7 +57,7 @@ def _parse_quarter(stem: str) -> int | None:
 
 def _parse_month(stem: str) -> int | None:
     lower = stem.lower()
-    for month, abbr in _MONTH_FIELDS.items():
+    for month, abbr in MONTH_FIELDS.items():
         if abbr in lower:
             return month
     return None
@@ -156,7 +143,7 @@ def _build_transition_year(pairs: list[tuple[DataRelease, str]]) -> TransitionYe
 
     for release, path in pairs:
         if isinstance(release, MonthlyRelease):
-            field = _MONTH_FIELDS[release.month]
+            field = MONTH_FIELDS[release.month]
             if release.monitor_type == "fixed":
                 monthly_fixed[field] = path
             else:
@@ -175,7 +162,7 @@ def _build_transition_year(pairs: list[tuple[DataRelease, str]]) -> TransitionYe
             else:
                 month = _parse_month(stem)
                 if month is not None:
-                    field = _MONTH_FIELDS[month]
+                    field = MONTH_FIELDS[month]
                     monthly = (
                         monthly_fixed if monitor_type == "fixed" else monthly_mobile
                     )
@@ -197,7 +184,7 @@ def _build_monthly_year(
     mobile_fields: dict[str, str] = {}
     for release, path in pairs:
         if isinstance(release, MonthlyRelease):
-            field = _MONTH_FIELDS[release.month]
+            field = MONTH_FIELDS[release.month]
             if release.monitor_type == "fixed":
                 fixed_fields[field] = path
             else:
@@ -209,7 +196,7 @@ def _build_monthly_year(
                 continue
             month = _parse_month(stem)
             if month is not None:
-                field = _MONTH_FIELDS[month]
+                field = MONTH_FIELDS[month]
                 if monitor_type == "fixed":
                     fixed_fields[field] = path
                 else:
