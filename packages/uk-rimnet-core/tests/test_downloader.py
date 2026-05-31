@@ -38,7 +38,7 @@ class TestDownloader:  # noqa: D101
 
     def make_downloader(self, responses: dict[str, bytes]) -> Downloader:
         return Downloader(
-            client=httpx.AsyncClient(transport=_MockAsyncTransport(responses)),
+            async_client=httpx.AsyncClient(transport=_MockAsyncTransport(responses)),
         )
 
     @pytest.mark.asyncio

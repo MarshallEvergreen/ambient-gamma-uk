@@ -6,15 +6,6 @@ from typing import TYPE_CHECKING
 import httpx
 from bs4 import BeautifulSoup
 from fsspec.implementations.local import LocalFileSystem
-from rich.progress import (
-    BarColumn,
-    DownloadColumn,
-    Progress,
-    SpinnerColumn,
-    TextColumn,
-    TimeRemainingColumn,
-    TransferSpeedColumn,
-)
 
 from uk_rimnet_core._downloader import Downloader
 from uk_rimnet_core.models import (
@@ -90,6 +81,10 @@ class GovUkCatalogueClient:
         def __init__(self, parent: GovUkCatalogueClient) -> None:
             self._parent = parent
 
+        async def list_releases(self) -> set[DataRelease]:
+            """Asynchronously fetch and parse the GOV.UK publication page to list all releases."""  # noqa: E501
+            return self._parent.list_releases()
+
         async def download_releases(
             self,
             destination: str,
@@ -110,7 +105,10 @@ class GovUkCatalogueClient:
     ) -> None:
         self._sync_client = client or httpx.Client()
         self._async_client = async_client or httpx.AsyncClient()
-        self._downloader = Downloader(self._async_client)
+        self._downloader = Downloader(
+            async_client=self._async_client,
+            sync_client=self._sync_client,
+        )
 
         self.async_ = self._Async(self)
 
@@ -150,39 +148,11 @@ class GovUkCatalogueClient:
 
         """
         resolved_fs = fs or LocalFileSystem()
-        resolved_fs.makedirs(destination, exist_ok=True)
-        releases = sorted(self.list_releases(), key=lambda r: r.filename)
-        total = len(releases)
-        paths: list[str] = []
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[bold blue]{task.description}", justify="left"),
-            BarColumn(),
-            DownloadColumn(),
-            TransferSpeedColumn(),
-            TimeRemainingColumn(),
-        ) as progress:
-            task_id = progress.add_task("", total=None)
-            for i, release in enumerate(releases, start=1):
-                path = f"{destination}/{release.filename}"
-                description = f"[{i}/{total}] {release.filename}"
-                if resolved_fs.exists(path):
-                    paths.append(path)
-                    continue
-                with self._sync_client.stream("GET", release.url) as response:
-                    response.raise_for_status()
-                    content_length = response.headers.get("content-length")
-                    progress.reset(
-                        task_id,
-                        description=description,
-                        total=int(content_length) if content_length else None,
-                    )
-                    with resolved_fs.open(path, "wb") as f:
-                        for chunk in response.iter_bytes(chunk_size=65536):
-                            f.write(chunk)
-                            progress.update(task_id, advance=len(chunk))
-                paths.append(path)
-        return paths
+        return self._downloader.download_all_sync(
+            releases=self.list_releases(),
+            destination=destination,
+            fs=resolved_fs,
+        )
 
 
 def _parse_releases(html: str) -> set[DataRelease]:
