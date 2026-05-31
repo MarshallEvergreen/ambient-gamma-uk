@@ -75,6 +75,23 @@ class GovUkCatalogueClient:
 
     """
 
+    class _Async:
+        def __init__(self, parent: GovUkCatalogueClient) -> None:
+            self._parent = parent
+
+        async def download_releases(
+            self,
+            destination: str,
+            fs: AbstractFileSystem | None = None,
+        ) -> Sequence[str]:
+            fs = fs or LocalFileSystem()
+            releases = self._parent.list_releases()
+            return await self._parent._downloader.download_all(  # noqa: SLF001
+                releases=releases,
+                destination=destination,
+                fs=fs,
+            )
+
     def __init__(  # noqa: D107
         self,
         client: httpx.Client | None = None,
@@ -83,6 +100,8 @@ class GovUkCatalogueClient:
         self._sync_client = client or httpx.Client()
         self._async_client = async_client or httpx.AsyncClient()
         self._downloader = Downloader(self._async_client)
+
+        self.async_ = self._Async(self)
 
     def list_releases(self) -> set[DataRelease]:
         """Fetch and parse the GOV.UK publication page to list all releases.
@@ -97,19 +116,6 @@ class GovUkCatalogueClient:
         response = self._sync_client.get(_PUBLICATION_URL)
         response.raise_for_status()
         return _parse_releases(response.text)
-
-    async def download_releases(  # noqa: D102
-        self,
-        destination: str,
-        fs: AbstractFileSystem | None = None,
-    ) -> Sequence[str]:
-        fs = fs or LocalFileSystem()
-        releases = self.list_releases()
-        return await self._downloader.download_all(
-            releases=releases,
-            destination=destination,
-            fs=fs,
-        )
 
 
 def _parse_releases(html: str) -> set[DataRelease]:

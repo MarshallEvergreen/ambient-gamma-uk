@@ -325,7 +325,7 @@ class TestGovUkCatalogueClientDownloadReleases:  # noqa: D101
         client = self._make_client(_make_html(_FIXED_URL), {_FIXED_URL: _CSV_CONTENT})
 
         # Act
-        paths = await client.download_releases("/output", self.fs)
+        paths = await client.async_.download_releases("/output", self.fs)
 
         # Assert
         assert len(paths) == 1
@@ -342,7 +342,7 @@ class TestGovUkCatalogueClientDownloadReleases:  # noqa: D101
         )
 
         # Act
-        paths = await client.download_releases("/output", self.fs)
+        paths = await client.async_.download_releases("/output", self.fs)
 
         # Assert
         assert len(paths) == 2
@@ -358,7 +358,7 @@ class TestGovUkCatalogueClientDownloadReleases:  # noqa: D101
         client = self._make_client(_make_html(_ANNUAL_URL), {_ANNUAL_URL: _ZIP_CONTENT})
 
         # Act
-        paths = await client.download_releases("/output", self.fs)
+        paths = await client.async_.download_releases("/output", self.fs)
 
         # Assert
         assert len(paths) == 1
@@ -372,7 +372,7 @@ class TestGovUkCatalogueClientDownloadReleases:  # noqa: D101
         client = self._make_client(_make_html(_FIXED_URL), {_FIXED_URL: _CSV_CONTENT})
 
         # Act
-        await client.download_releases("/nested/output", self.fs)
+        await client.async_.download_releases("/nested/output", self.fs)
 
         # Assert
         assert self.fs.isdir("/nested/output")
@@ -391,7 +391,7 @@ class TestGovUkCatalogueClientDownloadReleases:  # noqa: D101
             f.write(_CSV_CONTENT)
 
         # Act
-        paths = await client.download_releases("/output", self.fs)
+        paths = await client.async_.download_releases("/output", self.fs)
 
         # Assert
         assert paths == [existing_path]
@@ -408,4 +408,4 @@ class TestGovUkCatalogueClientDownloadReleases:  # noqa: D101
 
         # Act / Assert
         with pytest.raises(ExceptionGroup):
-            await client.download_releases("/output", self.fs)
+            await client.async_.download_releases("/output", self.fs)
