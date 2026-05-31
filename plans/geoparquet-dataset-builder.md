@@ -149,22 +149,24 @@ Algorithm:
 
 **Period/type inference helper: `_parse_file_metadata(path: Path) -> _FileMeta`**
 
-Parses `year`, `quarter` (or `month`), and `monitor_type` from the filename. The year is taken from the parent directory name (more reliable than filename). `monitor_type` defaults to `"fixed"` for pre-2016 files.
+Parses `year`, `quarter` (or `month`), and `monitor_type` from the filename. Programmatic parsing is both viable and preferred — the full set of patterns across all 80+ stats files is finite and enumerable. The year is always taken from the parent directory name (more reliable than from the filename itself).
 
-Quarter/month inference from filename stem (case-insensitive):
+**Quarter detection** — match against the lowercased filename stem using the patterns below. All patterns observed in the actual dataset are listed; there are no others.
 
-| Pattern examples | Quarter / month |
+| Quarter | Patterns that appear on disk |
 |---|---|
-| `Q1`, `quarter-1`, `Quarter_1`, `q1-jan-mar` | Q1 |
-| `jan-mar`, `january-march` | Q1 |
-| `Q2`, `q2-apr-jun`, `apr-jun`, `april-june`, `Ap-Jun` | Q2 |
-| `Q3`, `q3-jul-sep`, `jul-sep`, `july-september` | Q3 |
-| `Q4`, `q4-oct-dec`, `oct-dec`, `october-december` | Q4 |
-| `jan`, `feb`, … `dec`, `_01_`, `_02_`, … `_12_` | month number |
+| Q1 | `q1`, `quarter-1`, `quarter_1`, `jan-mar` |
+| Q2 | `q2`, `quarter-2`, `quarter_2`, `apr-jun`, `apr_jun`, `ap-jun` *(2019 typo)*, `apr_to_june`, `april-june` |
+| Q3 | `q3`, `quarter-3`, `quarter_3`, `jul-sep`, `july-sep`, `july-september` |
+| Q4 | `q4`, `quarter-4`, `quarter_4`, `oct-dec`, `oct_dec`, `october-dec`, `october-december` |
 
-`monitor_type` inference: presence of `fixed` or `mobile` (case-insensitive) in the filename stem. Default `"fixed"` if neither present (pre-2016 era).
+Implementation note: match patterns in the order listed — try the explicit Q-digit tokens (`q1`, `quarter-1`, `quarter_1`) first, then the month-range tokens. This avoids any ambiguity. If no pattern matches, raise a descriptive error (not a silent skip) so unexpected filenames surface immediately rather than causing a silently incomplete dataset.
 
-The switch from stats-file to monthly-streaming format within 2022 is determined purely by whether the file matches a monthly streaming pattern (single month name or `_MM_` in stem) vs a quarterly stats pattern.
+**Month detection** (monthly streaming files, 2022 Jul–Dec): match a standalone month abbreviation in the lowercased stem against `jan`, `feb`, `mar`, `apr`, `may`, `jun`, `jul`, `aug`, `sep`, `oct`, `nov`, `dec`. The 2025+ flat files use the `YYYY_MM_type` format; extract MM directly as an integer.
+
+**`monitor_type` detection**: search the lowercased filename stem for `fixed` or `mobile`. Default to `"fixed"` when neither is present (pre-2016 files are fixed-only).
+
+**File family routing**: a file belongs to the monthly streaming family if it matches a single-month pattern (one of the month abbreviations above, or the `YYYY_MM_` prefix format) and the year+month is on or after July 2022. Everything else routes to `read_stats_file`.
 
 ### `packages/uk-rimnet-core/src/uk_rimnet_core/dataset.py`
 
