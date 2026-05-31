@@ -1,7 +1,8 @@
-"""Quarterly stats file reader for RIMNET/RREMS data releases."""
+"""Stats and monthly CSV readers for RIMNET/RREMS data releases."""
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING
 
 import polars as pl
@@ -11,7 +12,7 @@ if TYPE_CHECKING:
 
     from uk_rimnet_core.models import MonitorType
 
-_COLUMN_ALIASES: dict[str, str] = {
+_STATS_COLUMN_ALIASES: dict[str, str] = {
     "location": "location_name",
     "site normal level": "site_normal",
     "standard deviation": "std_dev",
@@ -23,6 +24,25 @@ _COLUMN_ALIASES: dict[str, str] = {
     "min": "min",
     "max": "max",
 }
+
+_MONTHLY_COLUMN_ALIASES: dict[str, str] = {
+    # Title Case variants (2022 H2 fixed files only)
+    "reading date & time": "reading_date",
+    "site latitude": "latitude",
+    "site longitude": "longitude",
+    "reading": "reading",
+    "site normal": "site_normal",
+    # Snake case (all other monthly files)
+    "reading_date": "reading_date",
+    "latitude": "latitude",
+    "longitude": "longitude",
+    "site_normal": "site_normal",
+    "monitor_location": "monitor_location",
+}
+
+_MONTHLY_NEEDED = frozenset(
+    ["latitude", "longitude", "reading", "site_normal", "monitor_location"],
+)
 
 _KEEP_CANONICAL = frozenset(
     ["location_name", "site_normal", "std_dev", "mean", "min", "max"],
@@ -130,10 +150,92 @@ def _find_header_row(raw: pl.DataFrame, path: Path) -> int:
     raise StatsFileReadError(msg)
 
 
+def read_monthly_csv(
+    path: Path,
+    year: int,
+    month: int,
+    monitor_type: MonitorType,
+) -> pl.DataFrame:
+    """Read a monthly streaming CSV file and aggregate it to quarterly stats.
+
+    Handles all RIMNET/RREMS monthly streaming formats from 2022 H2 onwards,
+    including the Title Case column names used in the 2022 H2 fixed files and
+    the junk trailing metadata columns present in every file. Readings are
+    grouped by monitoring station and aggregated to mean, min, max, and
+    standard deviation.
+
+    Location names are taken directly from the ``monitor_location`` column
+    where present (2025 onwards). For earlier files that carry only coordinates
+    the ``location_name`` column is null; callers that need names for those
+    rows should resolve them separately via a location registry.
+
+    Args:
+        path: Path to the monthly CSV file.
+        year: Calendar year of the data in the file.
+        month: Calendar month of the data (1-12).
+        monitor_type: Whether the file covers fixed or mobile monitors.
+
+    Returns:
+        A DataFrame with columns: location_name, year, quarter, monitor_type,
+        mean, min, max, std_dev, site_normal. ``site_normal`` is null for
+        mobile files. ``location_name`` is null for files that pre-date the
+        addition of the monitor_location column (before 2025).
+
+    """
+    df = pl.read_csv(path, encoding="utf8-lossy")
+    col_map = {
+        raw: canonical
+        for raw in df.columns
+        if (canonical := _MONTHLY_COLUMN_ALIASES.get(raw.strip().lower())) is not None
+        and canonical in _MONTHLY_NEEDED
+    }
+    df = df.select(list(col_map)).rename(col_map)
+    for col in {"latitude", "longitude", "reading", "site_normal"} & set(df.columns):
+        df = df.with_columns(pl.col(col).cast(pl.Float64))
+
+    if "monitor_location" in df.columns:
+        df = df.with_columns(
+            pl.col("monitor_location").str.strip_chars().str.replace_all(r"\*", ""),
+        )
+
+    group_cols = ["latitude", "longitude"]
+    if "monitor_location" in df.columns:
+        group_cols.append("monitor_location")
+
+    agg = [
+        pl.mean("reading").alias("mean"),
+        pl.min("reading").alias("min"),
+        pl.max("reading").alias("max"),
+        pl.std("reading").alias("std_dev"),
+    ]
+    if "site_normal" in df.columns:
+        agg.append(pl.mean("site_normal").alias("site_normal"))
+
+    result = df.group_by(group_cols).agg(agg)
+
+    if "monitor_location" in result.columns:
+        result = result.rename({"monitor_location": "location_name"})
+    else:
+        result = result.with_columns(
+            pl.lit(None).cast(pl.String).alias("location_name"),
+        )
+
+    if "site_normal" not in result.columns:
+        result = result.with_columns(pl.lit(None).cast(pl.Float64).alias("site_normal"))
+
+    quarter = math.ceil(month / 3)
+
+    return result.with_columns(
+        pl.lit(year).alias("year"),
+        pl.lit(quarter).alias("quarter"),
+        pl.lit(monitor_type).alias("monitor_type"),
+    ).select(_OUTPUT_COLUMNS)
+
+
 def _normalize_columns(data: pl.DataFrame) -> pl.DataFrame:
     rename: dict[str, str] = {}
     for col in data.columns:
-        canonical = _COLUMN_ALIASES.get(col.strip().lower())
+        canonical = _STATS_COLUMN_ALIASES.get(col.strip().lower())
         if canonical is not None:
             rename[col] = canonical
     data = data.rename(rename)

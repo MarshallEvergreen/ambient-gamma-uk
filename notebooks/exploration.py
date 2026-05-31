@@ -33,12 +33,17 @@ def _(release_2026):
 @app.cell
 def _(pl, release_2025, release_2026):
     df = None
-    for f in [*release_2025.fixed.ordered_monthly_file_names, 
-              *release_2025.mobile.ordered_monthly_file_names,
-              *release_2026.fixed.ordered_monthly_file_names,
-              *release_2026.mobile.ordered_monthly_file_names,
-             ]:
-        _df = pl.read_csv(f, encoding="utf8-lossy", columns=["latitude", "longitude", "monitor_location"]).unique(subset=["monitor_location"], keep="last")
+    for f in [
+        *release_2025.fixed.ordered_monthly_file_names,
+        *release_2025.mobile.ordered_monthly_file_names,
+        *release_2026.fixed.ordered_monthly_file_names,
+        *release_2026.mobile.ordered_monthly_file_names,
+    ]:
+        _df = pl.read_csv(
+            f,
+            encoding="utf8-lossy",
+            columns=["latitude", "longitude", "monitor_location"],
+        ).unique(subset=["monitor_location"], keep="last")
         if df is None:
             df = _df
         else:
@@ -55,7 +60,7 @@ def _(df):
     gdf = gpd.GeoDataFrame(
         df.to_pandas(),
         geometry=gpd.points_from_xy(df["longitude"], df["latitude"], crs="EPSG:4326"),
-        crs="EPSG:4326"
+        crs="EPSG:4326",
     )
 
     gdf.plot(markersize=5, figsize=(10, 8))
@@ -70,10 +75,11 @@ def _(release_2025):
 
 @app.cell
 def _():
-    from uk_rimnet_core._readers import read_quarterly_stats_file
+    from uk_rimnet_core._readers import read_quarterly_stats_file, read_monthly_csv
     from pathlib import Path
-    _csv_path = Path("/Users/abie/Dev/uk-rimnet/bin/2019/Apr-Jun_2019_RIMNET_mobile_monitors.xlsx")
-    Q1_2010_df = read_quarterly_stats_file(_csv_path, 2010, 1, "fixed")
+
+    _csv_path = Path("/Users/abie/Dev/uk-rimnet/bin/2025_01_fixed.csv")
+    Q1_2010_df = read_monthly_csv(_csv_path, 2010, 1, "fixed")
     Q1_2010_df
     return
 
