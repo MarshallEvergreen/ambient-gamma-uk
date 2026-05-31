@@ -230,6 +230,33 @@ class TransitionYearData(BaseModel):
                 raise AnnualDataError(msg)
         return self
 
+    @model_validator(mode="after")
+    def _validate_monthly_h2_is_complete(self) -> Self:
+        for data, label in [
+            (self.monthly_fixed, "fixed"),
+            (self.monthly_mobile, "mobile"),
+        ]:
+            missing = [
+                m
+                for m, v in [
+                    ("jul", data.jul),
+                    ("aug", data.aug),
+                    ("sep", data.sep),
+                    ("oct", data.oct),
+                    ("nov", data.nov),
+                    ("dec", data.dec),
+                ]
+                if v is None
+            ]
+            if missing:
+                months = ", ".join(missing)
+                msg = (
+                    f"In 2022, all H2 months must be present for {label} monitors; "
+                    f"missing: {months}."
+                )
+                raise AnnualDataError(msg)
+        return self
+
 
 class MonthlyYearData(BaseModel):
     """Annual data for 2023 onwards when RREMS publishes monthly streaming CSVs.

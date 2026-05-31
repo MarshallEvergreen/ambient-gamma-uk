@@ -11,14 +11,13 @@ from fsspec.implementations.local import LocalFileSystem
 from uk_rimnet_core._downloader import Downloader
 from uk_rimnet_core.models import (
     AnnualRelease,
+    AnnualYearData,
     DataRelease,
     MonitorType,
     MonthlyRelease,
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
     from fsspec import AbstractFileSystem
 
 
@@ -90,7 +89,7 @@ class GovUkCatalogueClient:
             self,
             destination: str,
             fs: AbstractFileSystem | None = None,
-        ) -> Sequence[str]:
+        ) -> list[AnnualYearData]:
             fs = fs or LocalFileSystem()
             releases = self._parent.list_releases()
             return await self._parent._downloader.download_all(  # noqa: SLF001
@@ -131,7 +130,7 @@ class GovUkCatalogueClient:
         self,
         destination: str,
         fs: AbstractFileSystem | None = None,
-    ) -> Sequence[str]:
+    ) -> list[AnnualYearData]:
         """Download all releases sequentially to a destination directory.
 
         Skips any file that already exists at the destination. For concurrent
@@ -142,7 +141,7 @@ class GovUkCatalogueClient:
             fs: The target filesystem (local, S3, memory, etc.). Defaults to local.
 
         Returns:
-            List of paths to the downloaded (or already-existing) files.
+            One ``AnnualYearData`` per calendar year covered by the releases.
 
         Raises:
             httpx.HTTPStatusError: If any individual file download fails.

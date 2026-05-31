@@ -14,10 +14,15 @@ import pytest
 from fsspec.implementations.dirfs import DirFileSystem
 from fsspec.implementations.local import LocalFileSystem
 from uk_rimnet_core.client import _PUBLICATION_URL, GovUkCatalogueClient
-from uk_rimnet_core.models import AnnualRelease, MonthlyRelease
+from uk_rimnet_core.models import (
+    AnnualRelease,
+    MonthlyRelease,
+    MonthlyYearData,
+    QuarterlyYearData,
+)
 
 _CSV_CONTENT = b"reading_date,latitude,longitude,reading,units,monitor_location\n"
-_ZIP_CSV_NAME = "2020_01_fixed.csv"
+_ZIP_CSV_NAME = "q1_fixed_2020_stats.csv"
 
 
 def _zip_bytes(name: str, content: bytes) -> bytes:
@@ -346,12 +351,18 @@ class TestGovUkCatalogueClientAsyncDownloadReleases:  # noqa: D101
         client = self._make_client(_make_html(_FIXED_URL), {_FIXED_URL: _CSV_CONTENT})
 
         # Act
-        paths = await client.async_.download_releases("/output", self.fs)
+        result = await client.async_.download_releases("/output", self.fs)
 
         # Assert
-        assert len(paths) == 1
-        assert paths[0] == "/output/2026_04_fixed.csv"
-        assert self.fs.cat(paths[0]) == _CSV_CONTENT
+        assert len(result) == 1
+        data = result[0]
+        assert isinstance(data, MonthlyYearData)
+        assert data.year == 2026
+        assert data.fixed is not None
+        path = data.fixed.apr
+        assert path is not None
+        assert path == "/output/2026_04_fixed.csv"
+        assert self.fs.cat(path) == _CSV_CONTENT
 
     @pytest.mark.asyncio
     async def test_downloads_multiple_releases(self) -> None:
@@ -363,14 +374,17 @@ class TestGovUkCatalogueClientAsyncDownloadReleases:  # noqa: D101
         )
 
         # Act
-        paths = await client.async_.download_releases("/output", self.fs)
+        result = await client.async_.download_releases("/output", self.fs)
 
-        # Assert
-        assert len(paths) == 2
-        assert set(paths) == {
-            "/output/2026_04_fixed.csv",
-            "/output/2026_04_mobile.csv",
-        }
+        # Assert — both releases are for 2026 so they are grouped into one year
+        assert len(result) == 1
+        data = result[0]
+        assert isinstance(data, MonthlyYearData)
+        assert data.year == 2026
+        assert data.fixed is not None
+        assert data.fixed.apr == "/output/2026_04_fixed.csv"
+        assert data.mobile is not None
+        assert data.mobile.apr == "/output/2026_04_mobile.csv"
 
     @pytest.mark.asyncio
     async def test_downloads_annual_zip(self) -> None:
@@ -379,12 +393,17 @@ class TestGovUkCatalogueClientAsyncDownloadReleases:  # noqa: D101
         client = self._make_client(_make_html(_ANNUAL_URL), {_ANNUAL_URL: _ZIP_CONTENT})
 
         # Act
-        paths = await client.async_.download_releases("/output", self.fs)
+        result = await client.async_.download_releases("/output", self.fs)
 
         # Assert
-        assert len(paths) == 1
-        assert paths[0] == f"/output/2020/{_ZIP_CSV_NAME}"
-        assert self.fs.cat(paths[0]) == _CSV_CONTENT
+        assert len(result) == 1
+        data = result[0]
+        assert isinstance(data, QuarterlyYearData)
+        assert data.year == 2020
+        path = data.fixed.q1
+        assert path is not None
+        assert path == f"/output/2020/{_ZIP_CSV_NAME}"
+        assert self.fs.cat(path) == _CSV_CONTENT
 
     @pytest.mark.asyncio
     async def test_creates_destination_directory_if_missing(self) -> None:
@@ -412,11 +431,17 @@ class TestGovUkCatalogueClientAsyncDownloadReleases:  # noqa: D101
             f.write(_CSV_CONTENT)
 
         # Act
-        paths = await client.async_.download_releases("/output", self.fs)
+        result = await client.async_.download_releases("/output", self.fs)
 
         # Assert
-        assert paths == [existing_path]
-        assert self.fs.cat(existing_path) == _CSV_CONTENT
+        assert len(result) == 1
+        data = result[0]
+        assert isinstance(data, MonthlyYearData)
+        assert data.fixed is not None
+        path = data.fixed.apr
+        assert path is not None
+        assert path == existing_path
+        assert self.fs.cat(path) == _CSV_CONTENT
 
     @pytest.mark.asyncio
     async def test_raises_on_failed_download(self) -> None:

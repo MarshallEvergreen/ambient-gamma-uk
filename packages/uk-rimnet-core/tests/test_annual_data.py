@@ -152,6 +152,27 @@ class TestTransitionYearData:  # noqa: D101
                 monthly_mobile=self._monthly_h2(),
             )
 
+    def test_raises_when_monthly_h2_is_incomplete(self) -> None:
+        # Sep missing from fixed monthly — all six H2 months must be present
+        # Arrange
+        quarterly = self._quarterly_h1()
+        incomplete_monthly = MonthlyDataFile(
+            jul="/p/jul.csv",
+            aug="/p/aug.csv",
+            oct="/p/oct.csv",
+            nov="/p/nov.csv",
+            dec="/p/dec.csv",
+        )
+
+        # Act / Assert
+        with pytest.raises(ValidationError):
+            TransitionYearData(
+                quarterly_fixed=quarterly,
+                quarterly_mobile=quarterly,
+                monthly_fixed=incomplete_monthly,
+                monthly_mobile=self._monthly_h2(),
+            )
+
     def test_raises_when_year_is_not_2022(self) -> None:
         # Act / Assert
         with pytest.raises(ValidationError):
