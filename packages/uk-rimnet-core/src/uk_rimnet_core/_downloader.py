@@ -1,4 +1,5 @@
 import asyncio
+import zipfile
 from typing import TYPE_CHECKING
 
 import httpx
@@ -7,15 +8,12 @@ from rich.progress import (
     DownloadColumn,
     Progress,
     SpinnerColumn,
-    TaskID,
     TextColumn,
     TimeRemainingColumn,
     TransferSpeedColumn,
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
     from fsspec import AbstractFileSystem
 
     from uk_rimnet_core.models import DataRelease
@@ -47,51 +45,12 @@ class Downloader:
         self._async_client = async_client or httpx.AsyncClient()
         self._sync_client = sync_client or httpx.Client()
 
-    def download_all_sync(
-        self,
-        releases: set[DataRelease],
-        destination: str,
-        fs: AbstractFileSystem,
-    ) -> list[str]:
-        """Download all releases sequentially, skipping files that already exist.
-
-        Args:
-            releases: The set of releases to download.
-            destination: Directory path on ``fs`` to write files into.
-            fs: The target filesystem (local, S3, memory, etc.).
-
-        Returns:
-            List of paths to the downloaded (or already-existing) files.
-
-        Raises:
-            httpx.HTTPStatusError: If any individual file download fails.
-
-        """
-        fs.makedirs(destination, exist_ok=True)
-        sorted_releases = sorted(releases, key=lambda r: r.filename)
-        total = len(sorted_releases)
-        paths: list[str] = []
-        with Progress(*_PROGRESS_COLUMNS) as progress:
-            task_id = progress.add_task("", total=None)
-            for i, release in enumerate(sorted_releases, start=1):
-                description = f"[{i}/{total}] {release.filename}"
-                path = self._download_one_sync(
-                    release,
-                    destination,
-                    fs,
-                    progress,
-                    task_id,
-                    description,
-                )
-                paths.append(path)
-        return paths
-
     async def download_all(
         self,
         releases: set[DataRelease],
         destination: str,
         fs: AbstractFileSystem,
-    ) -> Sequence[str]:
+    ) -> list[str]:
         """Download all releases concurrently, skipping files that already exist.
 
         Args:
@@ -115,37 +74,35 @@ class Downloader:
                 ],
                 return_exceptions=True,
             )
-        errors: Sequence[Exception] = [r for r in results if isinstance(r, Exception)]
+        errors: list[Exception] = [r for r in results if isinstance(r, Exception)]
         if errors:
             msg = "download failures"
             raise ExceptionGroup(msg, errors)
-        return [r for r in results if isinstance(r, str)]
+        paths: list[str] = []
+        for path in [r for r in results if isinstance(r, str)]:
+            if path.endswith(".zip"):
+                paths.extend(self._unzip(path, destination, fs))
+            else:
+                paths.append(path)
+        return paths
 
-    def _download_one_sync(  # noqa: PLR0913
-        self,
-        release: DataRelease,
-        destination: str,
-        fs: AbstractFileSystem,
-        progress: Progress,
-        task_id: TaskID,
-        description: str,
-    ) -> str:
-        path = f"{destination}/{release.filename}"
-        if fs.exists(path):
-            return path
-        with self._sync_client.stream("GET", release.url) as response:
-            response.raise_for_status()
-            content_length = response.headers.get("content-length")
-            progress.reset(
-                task_id,
-                description=description,
-                total=int(content_length) if content_length else None,
-            )
-            with fs.open(path, "wb") as f:
-                for chunk in response.iter_bytes(chunk_size=65536):
-                    f.write(chunk)
-                    progress.update(task_id, advance=len(chunk))
-        return path
+    def _unzip(self, path: str, destination: str, fs: AbstractFileSystem) -> list[str]:
+        extracted: list[str] = []
+        zip_name = path.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+        out_dir = f"{destination}/{zip_name}"
+        fs.makedirs(out_dir, exist_ok=True)
+        with fs.open(path, "rb") as f, zipfile.ZipFile(f) as zf:
+            for info in zf.infolist():
+                if info.is_dir():
+                    continue
+                archived_filename = info.filename.rsplit("/", 1)[-1]
+                out_path = f"{out_dir}/{archived_filename}"
+                with zf.open(info) as member, fs.open(out_path, "wb") as out:
+                    while chunk := member.read(65536):
+                        out.write(chunk)
+                extracted.append(out_path)
+        fs.rm(path)  # clean up the zip file after extraction
+        return extracted
 
     async def _download_one(
         self,

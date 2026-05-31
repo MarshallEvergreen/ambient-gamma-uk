@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import io
+import zipfile
 from typing import TYPE_CHECKING
 
 import httpx
@@ -15,7 +17,17 @@ from uk_rimnet_core.client import _PUBLICATION_URL, GovUkCatalogueClient
 from uk_rimnet_core.models import AnnualRelease, MonthlyRelease
 
 _CSV_CONTENT = b"reading_date,latitude,longitude,reading,units,monitor_location\n"
-_ZIP_CONTENT = b"PK\x03\x04fake zip content"
+_ZIP_CSV_NAME = "2020_01_fixed.csv"
+
+
+def _zip_bytes(name: str, content: bytes) -> bytes:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr(name, content)
+    return buf.getvalue()
+
+
+_ZIP_CONTENT = _zip_bytes(_ZIP_CSV_NAME, _CSV_CONTENT)
 
 _FIXED_URL = "https://assets.publishing.service.gov.uk/media/abc/Apr_2026_ambient_gamma_dose_rates_across_the_UK__Fixed_RREMS_monitors_.csv"
 _MOBILE_URL = "https://assets.publishing.service.gov.uk/media/def/Apr_2026_ambient_gamma_dose_rates_across_the_UK__mobile_RREMS_monitors_.csv"
@@ -28,12 +40,21 @@ def _make_html(*hrefs: str) -> str:
 
 
 class _MockTransport(httpx.BaseTransport):
-    def __init__(self, html: str) -> None:
+    def __init__(
+        self,
+        html: str,
+        file_responses: dict[str, bytes] | None = None,
+    ) -> None:
         self._html = html
+        self._file_responses = file_responses or {}
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
-        if str(request.url) == _PUBLICATION_URL:
+        url = str(request.url)
+        if url == _PUBLICATION_URL:
             return httpx.Response(200, text=self._html)
+        content = self._file_responses.get(url)
+        if content is not None:
+            return httpx.Response(200, content=content)
         return httpx.Response(404)
 
 
@@ -301,7 +322,7 @@ class TestGovUkCatalogueClientListReleases:  # noqa: D101
             pass
 
 
-class TestGovUkCatalogueClientDownloadReleases:  # noqa: D101
+class TestGovUkCatalogueClientAsyncDownloadReleases:  # noqa: D101
     @pytest.fixture(autouse=True)
     def _setup(self, tmp_path: Path) -> None:
         self.fs = DirFileSystem(fs=LocalFileSystem(), path=tmp_path.as_posix())
@@ -362,8 +383,8 @@ class TestGovUkCatalogueClientDownloadReleases:  # noqa: D101
 
         # Assert
         assert len(paths) == 1
-        assert paths[0] == "/output/2020.zip"
-        assert self.fs.cat(paths[0]) == _ZIP_CONTENT
+        assert paths[0] == f"/output/2020/{_ZIP_CSV_NAME}"
+        assert self.fs.cat(paths[0]) == _CSV_CONTENT
 
     @pytest.mark.asyncio
     async def test_creates_destination_directory_if_missing(self) -> None:

@@ -1,5 +1,6 @@
 """UK Government RIMNET Catalogue."""
 
+import asyncio
 import re
 from typing import TYPE_CHECKING
 
@@ -130,7 +131,7 @@ class GovUkCatalogueClient:
         self,
         destination: str,
         fs: AbstractFileSystem | None = None,
-    ) -> list[str]:
+    ) -> Sequence[str]:
         """Download all releases sequentially to a destination directory.
 
         Skips any file that already exists at the destination. For concurrent
@@ -148,10 +149,8 @@ class GovUkCatalogueClient:
 
         """
         resolved_fs = fs or LocalFileSystem()
-        return self._downloader.download_all_sync(
-            releases=self.list_releases(),
-            destination=destination,
-            fs=resolved_fs,
+        return asyncio.run(
+            main=self.async_.download_releases(destination=destination, fs=resolved_fs),
         )
 
 
