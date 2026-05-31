@@ -8,6 +8,7 @@ from uk_rimnet_core.client import GovUkCatalogueClient
 
 async def _main() -> None:
     client = GovUkCatalogueClient()
+
     downloads = await client.async_.download_releases(
         destination="/Users/abie/Dev/uk-rimnet/bin",
     )

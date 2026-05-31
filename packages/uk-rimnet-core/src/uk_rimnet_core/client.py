@@ -6,6 +6,15 @@ from typing import TYPE_CHECKING
 import httpx
 from bs4 import BeautifulSoup
 from fsspec.implementations.local import LocalFileSystem
+from rich.progress import (
+    BarColumn,
+    DownloadColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    TimeRemainingColumn,
+    TransferSpeedColumn,
+)
 
 from uk_rimnet_core._downloader import Downloader
 from uk_rimnet_core.models import (
@@ -72,6 +81,8 @@ class GovUkCatalogueClient:
 
     Args:
         client: An httpx.Client used to fetch the publication index page.
+        async_client: An httpx.AsyncClient used for concurrent downloads.
+        max_concurrent: Maximum number of simultaneous async downloads.
 
     """
 
@@ -116,6 +127,62 @@ class GovUkCatalogueClient:
         response = self._sync_client.get(_PUBLICATION_URL)
         response.raise_for_status()
         return _parse_releases(response.text)
+
+    def download_releases(
+        self,
+        destination: str,
+        fs: AbstractFileSystem | None = None,
+    ) -> list[str]:
+        """Download all releases sequentially to a destination directory.
+
+        Skips any file that already exists at the destination. For concurrent
+        downloads use ``client.async_.download_releases`` instead.
+
+        Args:
+            destination: Directory path on ``fs`` to write files into.
+            fs: The target filesystem (local, S3, memory, etc.). Defaults to local.
+
+        Returns:
+            List of paths to the downloaded (or already-existing) files.
+
+        Raises:
+            httpx.HTTPStatusError: If any individual file download fails.
+
+        """
+        resolved_fs = fs or LocalFileSystem()
+        resolved_fs.makedirs(destination, exist_ok=True)
+        releases = sorted(self.list_releases(), key=lambda r: r.filename)
+        total = len(releases)
+        paths: list[str] = []
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[bold blue]{task.description}", justify="left"),
+            BarColumn(),
+            DownloadColumn(),
+            TransferSpeedColumn(),
+            TimeRemainingColumn(),
+        ) as progress:
+            task_id = progress.add_task("", total=None)
+            for i, release in enumerate(releases, start=1):
+                path = f"{destination}/{release.filename}"
+                description = f"[{i}/{total}] {release.filename}"
+                if resolved_fs.exists(path):
+                    paths.append(path)
+                    continue
+                with self._sync_client.stream("GET", release.url) as response:
+                    response.raise_for_status()
+                    content_length = response.headers.get("content-length")
+                    progress.reset(
+                        task_id,
+                        description=description,
+                        total=int(content_length) if content_length else None,
+                    )
+                    with resolved_fs.open(path, "wb") as f:
+                        for chunk in response.iter_bytes(chunk_size=65536):
+                            f.write(chunk)
+                            progress.update(task_id, advance=len(chunk))
+                paths.append(path)
+        return paths
 
 
 def _parse_releases(html: str) -> set[DataRelease]:
