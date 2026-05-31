@@ -57,9 +57,9 @@ class TestLocationRegistryBuildFromReleases:  # noqa: D101
             mobile=MonthlyDataFile(**mobile_kwargs),
         )
 
-    def test_upserts_coordinates_with_most_recent_value(self) -> None:
-        # A station that appears in January with one set of coordinates and then
-        # again in February with updated coordinates should resolve to the February values.  # noqa: E501
+    def test_averages_coordinates_across_files(self) -> None:
+        # A station that appears across multiple files with slightly different
+        # coordinates (e.g. GPS drift) resolves to the mean of all observed values.
 
         # Arrange
         jan = self._write_csv(
@@ -68,7 +68,7 @@ class TestLocationRegistryBuildFromReleases:  # noqa: D101
         )
         feb = self._write_csv(
             "feb.csv",
-            [{"latitude": 52.0, "longitude": -2.0, "monitor_location": "ALPHA"}],
+            [{"latitude": 53.0, "longitude": -3.0, "monitor_location": "ALPHA"}],
         )
         release = self._release(2025, fixed_files=[jan, feb])
 

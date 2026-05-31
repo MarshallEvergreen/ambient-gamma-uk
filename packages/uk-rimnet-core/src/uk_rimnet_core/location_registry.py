@@ -31,11 +31,9 @@ class LocationRegistry:
     ) -> pl.DataFrame:
         """Build a location registry from 2025 and subsequent monthly releases.
 
-        Files are processed in chronological order — January 2025 first, then
-        February 2025, and so on through any subsequent years. When the same
-        monitoring location appears in more than one file the most recent
-        coordinates take precedence, so the registry always reflects the latest
-        known position for each station.
+        All files are read and concatenated, then grouped by monitoring station.
+        Where the same station appears across multiple files (e.g. due to minor
+        GPS drift) its coordinates are averaged across all observations.
 
         Args:
             release_2025: The 2025 annual release. Must have year == 2025.
@@ -66,20 +64,24 @@ class LocationRegistry:
             + r.mobile.ordered_monthly_file_names
         ]
 
-        df = None
-        for f in all_files:
-            _df = pl.read_csv(
+        frames = [
+            pl.read_csv(
                 f,
                 encoding="utf8-lossy",
                 columns=["latitude", "longitude", "monitor_location"],
-            ).unique(subset=["monitor_location"], keep="last")
-            if df is None:
-                df = _df
-            else:
-                df = df.update(_df, on="monitor_location", how="full")
+            )
+            for f in all_files
+        ]
 
-        if df is None:
+        if not frames:
             msg = "No files found in releases to build registry from."
             raise LocationRegistryError(msg)
 
-        return df
+        return (
+            pl.concat(frames)
+            .group_by("monitor_location")
+            .agg(
+                pl.col("latitude").mean(),
+                pl.col("longitude").mean(),
+            )
+        )
