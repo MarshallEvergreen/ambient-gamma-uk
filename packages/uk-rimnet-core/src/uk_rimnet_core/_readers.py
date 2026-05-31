@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 from typing import TYPE_CHECKING
 
 import polars as pl
@@ -38,14 +37,14 @@ _MONTHLY_COLUMN_ALIASES: dict[str, str] = {
     "latitude": "latitude",
     "longitude": "longitude",
     "site_normal": "site_normal",
-    "monitor_location": "monitor_location",
+    "monitor_location": "location_name",
 }
 
-_MONTHLY_NEEDED = frozenset(
+_MONTHLY_REQUIRED = frozenset(
     ["latitude", "longitude", "reading", "site_normal", "monitor_location"],
 )
 
-_CANONICAL_ROWS = frozenset(
+_QUARTERLY_CANONICAL_ROWS = frozenset(
     ["location_name", "site_normal", "std_dev", "mean", "min", "max"],
 )
 
@@ -109,7 +108,7 @@ def read_quarterly_stats_file(
         normalized_header_mappings,
     )
 
-    data = data.select([c for c in data.columns if c in _CANONICAL_ROWS])
+    data = data.select([c for c in data.columns if c in _QUARTERLY_CANONICAL_ROWS])
 
     # Mostly targetted to remove rows like:
     # *indicates a change to Site No… ┆ null        ┆ null     ┆ null    ┆ null ┆ null │
@@ -120,15 +119,19 @@ def read_quarterly_stats_file(
         & (pl.col("mean").str.strip_chars() != ""),
     )
     data = data.with_columns(
-        pl.col("location_name").str.strip_chars().str.replace_all(r"\*", ""),
+        pl.col("location_name")
+        .str.strip_chars()
+        .str.replace_all(r"\*", "")
+        .str.strip_chars(),
     )
 
     # Add site normal if its missing
-    if "site_normal" not in data.columns:
-        data = data.with_columns(pl.lit(None).cast(pl.Float64).alias("site_normal"))
+    for col in ("site_normal", "latitude", "longitude"):
+        if col not in data.columns:
+            data = data.with_columns(pl.lit(None).cast(pl.Float64).alias(col))
 
     # Cast statistical rows to be floats
-    for col in _CANONICAL_ROWS - {"location_name"}:
+    for col in _QUARTERLY_CANONICAL_ROWS - {"location_name"}:
         if col in data.columns:
             data = data.with_columns(pl.col(col).cast(pl.Float64))
 
@@ -194,25 +197,28 @@ def read_monthly_csv(
         addition of the monitor_location column (before 2025).
 
     """
-    df = pl.read_csv(path, encoding="utf8-lossy")
-    col_map = {
+    data = pl.read_csv(path, encoding="utf8-lossy")
+    normalised_names = {
         raw: canonical
-        for raw in df.columns
+        for raw in data.columns
         if (canonical := _MONTHLY_COLUMN_ALIASES.get(raw.strip().lower())) is not None
-        and canonical in _MONTHLY_NEEDED
+        and canonical in _MONTHLY_REQUIRED
     }
-    df = df.select(list(col_map)).rename(col_map)
-    for col in {"latitude", "longitude", "reading", "site_normal"} & set(df.columns):
-        df = df.with_columns(pl.col(col).cast(pl.Float64))
+    data = data.rename(normalised_names).select(list(normalised_names))
+    for col in {"latitude", "longitude", "reading", "site_normal"} & set(data.columns):
+        data = data.with_columns(pl.col(col).cast(pl.Float64))
 
-    if "monitor_location" in df.columns:
-        df = df.with_columns(
-            pl.col("monitor_location").str.strip_chars().str.replace_all(r"\*", ""),
+    if "location_name" in data.columns:
+        data = data.with_columns(
+            pl.col("location_name")
+            .str.strip_chars()
+            .str.replace_all(r"\*", "")
+            .str.strip_chars(),
         )
+    else:
+        data = data.with_columns(pl.lit(None).cast(pl.String).alias("location_name"))
 
-    group_cols = ["latitude", "longitude"]
-    if "monitor_location" in df.columns:
-        group_cols.append("monitor_location")
+    group_cols: list[str] = ["latitude", "longitude", "location_name"]
 
     agg = [
         pl.mean("reading").alias("mean"),
@@ -220,25 +226,15 @@ def read_monthly_csv(
         pl.max("reading").alias("max"),
         pl.std("reading").alias("std_dev"),
     ]
-    if "site_normal" in df.columns:
+    if "site_normal" in data.columns:
         agg.append(pl.mean("site_normal").alias("site_normal"))
-
-    result = df.group_by(group_cols).agg(agg)
-
-    if "monitor_location" in result.columns:
-        result = result.rename({"monitor_location": "location_name"})
     else:
-        result = result.with_columns(
-            pl.lit(None).cast(pl.String).alias("location_name"),
-        )
+        data = data.with_columns(pl.lit(None).cast(pl.Float64).alias("site_normal"))
 
-    if "site_normal" not in result.columns:
-        result = result.with_columns(pl.lit(None).cast(pl.Float64).alias("site_normal"))
+    data = data.group_by(group_cols).agg(agg)
 
-    quarter = math.ceil(month / 3)
-
-    return result.with_columns(
+    return data.with_columns(
         pl.lit(year).alias("year"),
-        pl.lit(quarter).alias("quarter"),
+        pl.lit(month).alias("month"),
         pl.lit(monitor_type).alias("monitor_type"),
     )
