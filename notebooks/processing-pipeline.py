@@ -43,7 +43,9 @@ def _():
 
 @app.cell
 def _(pl, process_single_release, registry_data, releases):
-    df = pl.concat([process_single_release(releases[i]) for i in range(5 + 1)], how="diagonal")
+    df = pl.concat(
+        [process_single_release(releases[i]) for i in range(5 + 1)], how="diagonal"
+    )
 
     df.drop("latitude", "longitude").join(
         registry_data,
