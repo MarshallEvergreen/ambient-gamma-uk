@@ -1,8 +1,10 @@
 """Stats and monthly CSV readers for RIMNET/RREMS data releases."""
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import polars as pl
+from fsspec.implementations.local import LocalFileSystem
 
 from uk_rimnet_core._columns import (
     MONTHLY_ALIASES,
@@ -12,7 +14,7 @@ from uk_rimnet_core._columns import (
 )
 
 if TYPE_CHECKING:
-    from pathlib import Path
+    from fsspec import AbstractFileSystem
 
     from uk_rimnet_core.models import MonitorType
 
@@ -22,10 +24,11 @@ class StatsFileReadError(Exception):
 
 
 def read_quarterly_stats_file(
-    path: Path,
+    path: str | Path,
     year: int,
     quarter: int,
     monitor_type: MonitorType,
+    fs: AbstractFileSystem | None = None,
 ) -> pl.DataFrame:
     """Read a quarterly stats CSV or XLSX file into a normalised DataFrame.
 
@@ -36,10 +39,12 @@ def read_quarterly_stats_file(
     set and blank separator rows are dropped.
 
     Args:
-        path: Path to the CSV or XLSX stats file.
+        path: Path to the CSV or XLSX stats file. May be a local path or any
+            path supported by ``fs``.
         year: Calendar year of the data in the file.
         quarter: Quarter of the data (1-4).
         monitor_type: Whether the file covers fixed or mobile monitors.
+        fs: Filesystem to read from. Defaults to the local filesystem.
 
     Returns:
         A DataFrame with columns: location_name, year, quarter, monitor_type,
@@ -51,7 +56,8 @@ def read_quarterly_stats_file(
         StatsFileReadError: If no header row can be found in the file.
 
     """
-    raw = _load_raw(path)
+    resolved_fs = fs or LocalFileSystem()
+    raw = _load_raw(path, resolved_fs)
     header_idx = _find_header_row(raw, path)
 
     # Get the headers as they are in the excel sheet / csv file
@@ -111,18 +117,19 @@ def read_quarterly_stats_file(
     )
 
 
-def _load_raw(path: Path) -> pl.DataFrame:
-    if path.suffix.lower() == ".xlsx":
-        return pl.read_excel(path, has_header=False)
-    return pl.read_csv(
-        path,
-        has_header=False,
-        encoding="utf8-lossy",
-        infer_schema_length=0,
-    )
+def _load_raw(path: str | Path, fs: AbstractFileSystem) -> pl.DataFrame:
+    with fs.open(path, "rb") as f:
+        if Path(path).suffix.lower() == ".xlsx":
+            return pl.read_excel(f, has_header=False)
+        return pl.read_csv(
+            f,
+            has_header=False,
+            encoding="utf8-lossy",
+            infer_schema_length=0,
+        )
 
 
-def _find_header_row(raw: pl.DataFrame, path: Path) -> int:
+def _find_header_row(raw: pl.DataFrame, path: str | Path) -> int:
     for i, row in enumerate(raw.iter_rows()):
         if "location" in str(row[0] or "").strip().lower():
             return i
@@ -134,10 +141,11 @@ def _find_header_row(raw: pl.DataFrame, path: Path) -> int:
 
 
 def read_monthly_csv(
-    path: Path,
+    path: str | Path,
     year: int,
     month: int,
     monitor_type: MonitorType,
+    fs: AbstractFileSystem | None = None,
 ) -> pl.DataFrame:
     """Read a monthly streaming CSV file and aggregate it to quarterly stats.
 
@@ -153,10 +161,12 @@ def read_monthly_csv(
     rows should resolve them separately via a location registry.
 
     Args:
-        path: Path to the monthly CSV file.
+        path: Path to the monthly CSV file. May be a local path or any path
+            supported by ``fs``.
         year: Calendar year of the data in the file.
         month: Calendar month of the data (1-12).
         monitor_type: Whether the file covers fixed or mobile monitors.
+        fs: Filesystem to read from. Defaults to the local filesystem.
 
     Returns:
         A DataFrame with columns: location_name, year, quarter, monitor_type,
@@ -165,7 +175,9 @@ def read_monthly_csv(
         addition of the monitor_location column (before 2025).
 
     """
-    data = pl.read_csv(path, encoding="utf8-lossy")
+    resolved_fs = fs or LocalFileSystem()
+    with resolved_fs.open(path, "rb") as f:
+        data = pl.read_csv(f, encoding="utf8-lossy")
     normalised_names = {
         raw: canonical
         for raw in data.columns

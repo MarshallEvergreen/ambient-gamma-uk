@@ -31,9 +31,7 @@ async def _main() -> None:
     )
     registry.save(Path("bin/registry.csv"))
     logger.info(f"Location registry built with {len(registry_data)} unique locations.")
-    path_xlsx = Path(
-        "/Users/abie/Dev/uk-rimnet/bin/2020/rimmet-mobile-monitors-summary-july-september-2020.csv",
-    )
+    path_xlsx = "/Users/abie/Dev/uk-rimnet/bin/2020/rimmet-mobile-monitors-summary-july-september-2020.csv"  # noqa: E501
 
     quarterly_xlsx = read_quarterly_stats_file(path_xlsx, 17, 1, "fixed")
 
