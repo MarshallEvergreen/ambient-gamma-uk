@@ -114,6 +114,7 @@ def read_quarterly_stats_file(
         pl.lit(year).alias("year"),
         pl.lit(quarter).alias("quarter"),
         pl.lit(monitor_type).alias("monitor_type"),
+        pl.lit("µGy/h").alias("unit"),
     )
 
 
@@ -217,4 +218,5 @@ def read_monthly_csv(
         pl.lit(year).alias("year"),
         pl.lit(month).alias("month"),
         pl.lit(monitor_type).alias("monitor_type"),
+        pl.lit("µGy/h").alias("unit"),
     )

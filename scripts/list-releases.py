@@ -25,10 +25,7 @@ async def _main() -> None:
 
     # Build the Location Registry
     registry = LocationRegistry()
-    registry_data = registry.build_from_releases(
-        release_2025=releases[-2],  # ty:ignore[invalid-argument-type]
-        subsequent_releases=releases[-1:],  # ty:ignore[invalid-argument-type]
-    )
+    registry_data = registry.build_from_releases(releases)
     registry.save(Path("bin/registry.csv"))
     logger.info(f"Location registry built with {len(registry_data)} unique locations.")
     path_xlsx = "/Users/abie/Dev/uk-rimnet/bin/2020/rimmet-mobile-monitors-summary-july-september-2020.csv"  # noqa: E501

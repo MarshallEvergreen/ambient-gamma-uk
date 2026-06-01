@@ -68,23 +68,54 @@ class TestLocationRegistryBuildFromReleases:  # noqa: D101
             "feb.csv",
             [{"latitude": 53.0, "longitude": -3.0, "monitor_location": "ALPHA"}],
         )
-        release = self._release(2025, fixed_files=[jan, feb])
+        releases = [self._release(2025, fixed_files=[jan, feb])]
 
         # Act
-        df = LocationRegistry().build_from_releases(release, [])
+        df = LocationRegistry().build_from_releases(releases)
 
         # Assert
         row = df.filter(pl.col("location_name") == "ALPHA")
         assert row["latitude"][0] == pytest.approx(52.0)
         assert row["longitude"][0] == pytest.approx(-2.0)
 
-    def test_raises_when_release_2025_has_wrong_year(self) -> None:
+    def test_ignores_releases_before_2025(self) -> None:
+        # Releases predating 2025 carry no location names and must be skipped.
+
         # Arrange
-        release = self._release(2026)
+        jan = self._write_csv(
+            "jan.csv",
+            [{"latitude": 51.0, "longitude": -1.0, "monitor_location": "ALPHA"}],
+        )
+        releases = [self._release(2024, fixed_files=[jan])]
 
         # Act / Assert
         with pytest.raises(LocationRegistryError):
-            LocationRegistry().build_from_releases(release, [])
+            LocationRegistry().build_from_releases(releases)
+
+    def test_uses_files_from_multiple_years(self) -> None:
+        # Releases from 2025 and later are both used to build the registry.
+
+        # Arrange
+        jan_2025 = self._write_csv(
+            "jan_2025.csv",
+            [{"latitude": 51.0, "longitude": -1.0, "monitor_location": "ALPHA"}],
+        )
+        jan_2026 = self._write_csv(
+            "jan_2026.csv",
+            [{"latitude": 53.0, "longitude": -3.0, "monitor_location": "ALPHA"}],
+        )
+        releases = [
+            self._release(2025, fixed_files=[jan_2025]),
+            self._release(2026, fixed_files=[jan_2026]),
+        ]
+
+        # Act
+        df = LocationRegistry().build_from_releases(releases)
+
+        # Assert
+        row = df.filter(pl.col("location_name") == "ALPHA")
+        assert row["latitude"][0] == pytest.approx(52.0)
+        assert row["longitude"][0] == pytest.approx(-2.0)
 
     def test_save_writes_registry_to_csv(self) -> None:
         # Arrange
@@ -92,9 +123,8 @@ class TestLocationRegistryBuildFromReleases:  # noqa: D101
             "jan.csv",
             [{"latitude": 51.5, "longitude": -0.1, "monitor_location": "BRAVO"}],
         )
-        release = self._release(2025, fixed_files=[jan])
         registry = LocationRegistry()
-        registry.build_from_releases(release, [])
+        registry.build_from_releases([self._release(2025, fixed_files=[jan])])
         out = self._tmp / "registry.csv"
 
         # Act

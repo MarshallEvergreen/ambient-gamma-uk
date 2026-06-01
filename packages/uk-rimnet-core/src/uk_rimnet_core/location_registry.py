@@ -3,69 +3,64 @@
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
     from pathlib import Path
 
-    from uk_rimnet_core.models import MonthlyYearData
+    from uk_rimnet_core.models import AnnualYearData
 
 import polars as pl
 
 from uk_rimnet_core._columns import MONTHLY_ALIASES
+from uk_rimnet_core.models import MonthlyYearData
 
 
 class LocationRegistryError(Exception):  # noqa: D101
     pass
 
 
-class LocationRegistry:
-    """Builds the location registry from releases post 2025.
+_REGISTRY_YEAR = 2025
 
-    2025 is the year when the RRMES data releases started to include geospatial
-    coordinates along with the name of the monitoring station. Therefore, the location
-    registry can be built from the releases starting from 2025 and used to retrospectively
-    assign coordinates to stations in earlier releases, where only station names are provided.
-    """  # noqa: E501
+
+class LocationRegistry:
+    """Builds the location registry from all downloaded releases from 2025 onwards.
+
+    2025 is the year when RREMS data releases started to include geospatial
+    coordinates alongside the monitoring station name. The registry is built
+    from all such releases and used to retrospectively assign coordinates to
+    stations in earlier releases where only station names are provided.
+    """
 
     def __init__(self) -> None:  # noqa: D107
         self._registry: pl.DataFrame | None = None
 
-    def build_from_releases(
-        self,
-        release_2025: MonthlyYearData,
-        subsequent_releases: list[MonthlyYearData],
-    ) -> pl.DataFrame:
-        """Build a location registry from 2025 and subsequent monthly releases.
+    def build_from_releases(self, releases: Sequence[AnnualYearData]) -> pl.DataFrame:
+        """Build a location registry from all downloaded releases from 2025 onwards.
 
-        All files are read and concatenated, then grouped by monitoring station.
-        Where the same station appears across multiple files (e.g. due to minor
-        GPS drift) its coordinates are averaged across all observations.
+        Releases predating 2025 are ignored. All monthly files from qualifying
+        releases are concatenated, then grouped by monitoring station. Where the
+        same station appears across multiple files (e.g. due to minor GPS drift)
+        its coordinates are averaged across all observations.
 
         Args:
-            release_2025: The 2025 annual release. Must have year == 2025.
-            subsequent_releases: Any releases for years after 2025, in
-                chronological order.
+            releases: All downloaded annual releases, as returned by
+                ``Client.download_releases``. Releases before 2025 are ignored.
 
         Returns:
             A DataFrame with one row per unique monitoring location, containing
             columns ``latitude``, ``longitude``, and ``location_name``.
 
         Raises:
-            LocationRegistryError: If ``release_2025`` does not have year 2025.
+            LocationRegistryError: If no files are found in releases from 2025
+                onwards.
 
         """
-        if release_2025.year != 2025:  # noqa: PLR2004
-            msg = "release_2025 must have year 2025."
-            raise LocationRegistryError(msg)
-
-        files_2025 = (
-            release_2025.fixed.ordered_monthly_file_names
-            + release_2025.mobile.ordered_monthly_file_names
-        )
-
-        all_files = files_2025 + [
+        all_files = [
             f
-            for r in subsequent_releases
-            for f in r.fixed.ordered_monthly_file_names
-            + r.mobile.ordered_monthly_file_names
+            for r in releases
+            if isinstance(r, MonthlyYearData) and r.year >= _REGISTRY_YEAR
+            for f in (
+                r.fixed.ordered_monthly_file_names + r.mobile.ordered_monthly_file_names
+            )
         ]
 
         frames = [
