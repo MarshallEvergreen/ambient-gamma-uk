@@ -1,7 +1,5 @@
 """Tests for LocationRegistry."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 import polars as pl
@@ -87,3 +85,31 @@ class TestLocationRegistryBuildFromReleases:  # noqa: D101
         # Act / Assert
         with pytest.raises(LocationRegistryError):
             LocationRegistry().build_from_releases(release, [])
+
+    def test_save_writes_registry_to_csv(self) -> None:
+        # Arrange
+        jan = self._write_csv(
+            "jan.csv",
+            [{"latitude": 51.5, "longitude": -0.1, "monitor_location": "BRAVO"}],
+        )
+        release = self._release(2025, fixed_files=[jan])
+        registry = LocationRegistry()
+        registry.build_from_releases(release, [])
+        out = self._tmp / "registry.csv"
+
+        # Act
+        registry.save(out)
+
+        # Assert
+        df = pl.read_csv(out)
+        row = df.filter(pl.col("monitor_location") == "BRAVO")
+        assert row["latitude"][0] == pytest.approx(51.5)
+        assert row["longitude"][0] == pytest.approx(-0.1)
+
+    def test_save_raises_when_registry_not_built(self) -> None:
+        # Arrange
+        out = self._tmp / "registry.csv"
+
+        # Act / Assert
+        with pytest.raises(LocationRegistryError):
+            LocationRegistry().save(out)

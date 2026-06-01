@@ -3,6 +3,8 @@
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from uk_rimnet_core.models import MonthlyYearData
 
 import polars as pl
@@ -22,7 +24,7 @@ class LocationRegistry:
     """  # noqa: E501
 
     def __init__(self) -> None:  # noqa: D107
-        self._registry = {}
+        self._registry: pl.DataFrame | None = None
 
     def build_from_releases(
         self,
@@ -77,7 +79,7 @@ class LocationRegistry:
             msg = "No files found in releases to build registry from."
             raise LocationRegistryError(msg)
 
-        return (
+        self._registry = (
             pl.concat(frames)
             .group_by("monitor_location")
             .agg(
@@ -85,3 +87,19 @@ class LocationRegistry:
                 pl.col("longitude").mean(),
             )
         )
+        return self._registry
+
+    def save(self, path: Path) -> None:
+        """Write the registry to a CSV file.
+
+        Args:
+            path: Destination path for the CSV file.
+
+        Raises:
+            LocationRegistryError: If the registry has not been built yet.
+
+        """
+        if self._registry is None:
+            msg = "Registry has not been built. Call build_from_releases first."
+            raise LocationRegistryError(msg)
+        self._registry.write_csv(path)

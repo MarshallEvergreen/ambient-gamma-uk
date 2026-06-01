@@ -24,11 +24,13 @@ async def _main() -> None:
         logger.info("Found release: {release}", release=release)
 
     # Build the Location Registry
-    registry = LocationRegistry().build_from_releases(
+    registry = LocationRegistry()
+    registry_data = registry.build_from_releases(
         release_2025=releases[-2],  # ty:ignore[invalid-argument-type]
         subsequent_releases=releases[-1:],  # ty:ignore[invalid-argument-type]
     )
-    logger.info(f"Location registry built with {len(registry)} unique locations.")
+    registry.save(Path("bin/registry.csv"))
+    logger.info(f"Location registry built with {len(registry_data)} unique locations.")
     path_xlsx = Path(
         "/Users/abie/Dev/uk-rimnet/bin/2020/rimmet-mobile-monitors-summary-july-september-2020.csv",
     )
@@ -37,7 +39,7 @@ async def _main() -> None:
 
     quarterly_xlsx = (
         quarterly_xlsx.join(
-            registry,
+            registry_data,
             left_on="location_name",
             right_on="monitor_location",
             how="left",

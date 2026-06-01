@@ -57,3 +57,4 @@ uv run poe sync       # uv sync --all-packages --all-groups
 - **ruff**: `select = ["ALL"]` — every rule is enabled. Add `ignore` entries in `[tool.ruff.lint]` when rules conflict or are intentionally not applicable.
 - **ty**: `all = "error"` — all diagnostics are errors.
 - **ruff + ty split**: ruff enforces annotation *presence* (ANN rules); ty validates annotation *correctness*.
+- **No `from __future__ import annotations`.** The project targets Python 3.12+; PEP 563 postponed evaluation is not needed.

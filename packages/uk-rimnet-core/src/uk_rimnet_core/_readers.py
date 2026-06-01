@@ -1,7 +1,5 @@
 """Stats and monthly CSV readers for RIMNET/RREMS data releases."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 import polars as pl

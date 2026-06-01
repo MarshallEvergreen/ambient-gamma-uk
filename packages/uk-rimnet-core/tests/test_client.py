@@ -1,7 +1,5 @@
 """Cataloguing tests."""
 
-from __future__ import annotations
-
 import io
 import zipfile
 from typing import TYPE_CHECKING
