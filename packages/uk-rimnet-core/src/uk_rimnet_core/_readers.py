@@ -4,47 +4,17 @@ from typing import TYPE_CHECKING
 
 import polars as pl
 
+from uk_rimnet_core._columns import (
+    MONTHLY_ALIASES,
+    MONTHLY_REQUIRED,
+    QUARTERLY_CANONICAL,
+    QUARTERLY_STAT_ALIASES,
+)
+
 if TYPE_CHECKING:
     from pathlib import Path
 
     from uk_rimnet_core.models import MonitorType
-
-_COLUMN_ALIASES: dict[str, str] = {
-    "location": "location_name",
-    "monitor_location": "location_name",
-    "site normal level": "site_normal",
-    "standard deviation": "std_dev",
-    "std deviation": "std_dev",
-    "std dev": "std_dev",
-    "mean": "mean",
-    "avg": "mean",
-    "average": "mean",
-    "min": "min",
-    "max": "max",
-}
-
-_MONTHLY_COLUMN_ALIASES: dict[str, str] = {
-    # Title Case variants (2022 H2 fixed files only)
-    "reading date & time": "reading_date",
-    "site latitude": "latitude",
-    "site longitude": "longitude",
-    "reading": "reading",
-    "site normal": "site_normal",
-    # Snake case (all other monthly files)
-    "reading_date": "reading_date",
-    "latitude": "latitude",
-    "longitude": "longitude",
-    "site_normal": "site_normal",
-    "monitor_location": "location_name",
-}
-
-_MONTHLY_REQUIRED = frozenset(
-    ["latitude", "longitude", "reading", "site_normal", "monitor_location"],
-)
-
-_QUARTERLY_CANONICAL_ROWS = frozenset(
-    ["location_name", "site_normal", "std_dev", "mean", "min", "max"],
-)
 
 
 class StatsFileReadError(Exception):
@@ -99,14 +69,14 @@ def read_quarterly_stats_file(
     normalized_header_mappings = {
         k: normalized
         for k, v in unnormalized_header_mappings.items()
-        if (normalized := _COLUMN_ALIASES.get(v.strip().lower())) is not None
+        if (normalized := QUARTERLY_STAT_ALIASES.get(v.strip().lower())) is not None
     }
 
     data = data.rename(
         normalized_header_mappings,
     )
 
-    data = data.select([c for c in data.columns if c in _QUARTERLY_CANONICAL_ROWS])
+    data = data.select([c for c in data.columns if c in QUARTERLY_CANONICAL])
 
     # Mostly targetted to remove rows like:
     # *indicates a change to Site No… ┆ null        ┆ null     ┆ null    ┆ null ┆ null │
@@ -129,7 +99,7 @@ def read_quarterly_stats_file(
             data = data.with_columns(pl.lit(None).cast(pl.Float64).alias(col))
 
     # Cast statistical rows to be floats
-    for col in _QUARTERLY_CANONICAL_ROWS - {"location_name"}:
+    for col in QUARTERLY_CANONICAL - {"location_name"}:
         if col in data.columns:
             data = data.with_columns(pl.col(col).cast(pl.Float64))
 
@@ -199,8 +169,8 @@ def read_monthly_csv(
     normalised_names = {
         raw: canonical
         for raw in data.columns
-        if (canonical := _MONTHLY_COLUMN_ALIASES.get(raw.strip().lower())) is not None
-        and canonical in _MONTHLY_REQUIRED
+        if (canonical := MONTHLY_ALIASES.get(raw.strip().lower())) is not None
+        and canonical in MONTHLY_REQUIRED
     }
     data = data.rename(normalised_names).select(list(normalised_names))
     for col in {"latitude", "longitude", "reading", "site_normal"} & set(data.columns):

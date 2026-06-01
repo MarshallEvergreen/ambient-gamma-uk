@@ -9,6 +9,8 @@ if TYPE_CHECKING:
 
 import polars as pl
 
+from uk_rimnet_core._columns import MONTHLY_ALIASES
+
 
 class LocationRegistryError(Exception):  # noqa: D101
     pass
@@ -44,7 +46,7 @@ class LocationRegistry:
 
         Returns:
             A DataFrame with one row per unique monitoring location, containing
-            columns ``latitude``, ``longitude``, and ``monitor_location``.
+            columns ``latitude``, ``longitude``, and ``location_name``.
 
         Raises:
             LocationRegistryError: If ``release_2025`` does not have year 2025.
@@ -86,6 +88,7 @@ class LocationRegistry:
                 pl.col("latitude").mean(),
                 pl.col("longitude").mean(),
             )
+            .rename({"monitor_location": MONTHLY_ALIASES["monitor_location"]})
         )
         return self._registry
 

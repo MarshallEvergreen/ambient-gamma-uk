@@ -74,7 +74,7 @@ class TestLocationRegistryBuildFromReleases:  # noqa: D101
         df = LocationRegistry().build_from_releases(release, [])
 
         # Assert
-        row = df.filter(pl.col("monitor_location") == "ALPHA")
+        row = df.filter(pl.col("location_name") == "ALPHA")
         assert row["latitude"][0] == pytest.approx(52.0)
         assert row["longitude"][0] == pytest.approx(-2.0)
 
@@ -102,7 +102,7 @@ class TestLocationRegistryBuildFromReleases:  # noqa: D101
 
         # Assert
         df = pl.read_csv(out)
-        row = df.filter(pl.col("monitor_location") == "BRAVO")
+        row = df.filter(pl.col("location_name") == "BRAVO")
         assert row["latitude"][0] == pytest.approx(51.5)
         assert row["longitude"][0] == pytest.approx(-0.1)
 
