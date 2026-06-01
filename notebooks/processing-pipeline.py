@@ -6,7 +6,6 @@ app = marimo.App(width="medium")
 
 @app.cell
 def _():
-
     return
 
 
@@ -31,6 +30,7 @@ def _(LocationRegistry, releases):
     registry = LocationRegistry()
     registry_data = registry.build_from_releases(releases)
     registry_data
+    return (registry_data,)
 
 
 @app.cell
@@ -42,12 +42,15 @@ def _():
 
 
 @app.cell
-def _(pl, process_single_release, releases):
+def _(pl, process_single_release, registry_data, releases):
+    df = pl.concat([process_single_release(releases[i]) for i in range(5 + 1)], how="diagonal")
 
-    pl.concat(
-        [process_single_release(releases[i]) for i in range(5 + 1)],
-        how="diagonal",
+    df.drop("latitude", "longitude").join(
+        registry_data,
+        on="location_name",
+        how="left",
     )
+    return
 
 
 if __name__ == "__main__":
