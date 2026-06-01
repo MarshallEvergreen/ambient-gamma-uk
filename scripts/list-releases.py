@@ -41,7 +41,7 @@ async def _main() -> None:
         quarterly_xlsx.join(
             registry_data,
             left_on="location_name",
-            right_on="monitor_location",
+            right_on="location_name",
             how="left",
         )
         .with_columns(
