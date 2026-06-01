@@ -7,11 +7,11 @@ import polars as pl
 from loguru import logger
 from uk_rimnet_core import LocationRegistry
 from uk_rimnet_core._readers import read_quarterly_stats_file
-from uk_rimnet_core.client import GovUkRIMNETRRMESClient
+from uk_rimnet_core.client import Client
 
 
 async def _main() -> None:
-    client = GovUkRIMNETRRMESClient()
+    client = Client()
 
     destination = "/Users/abie/Dev/uk-rimnet/bin"
 

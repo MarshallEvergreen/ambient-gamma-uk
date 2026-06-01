@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 import pytest
 from fsspec.implementations.dirfs import DirFileSystem
 from fsspec.implementations.local import LocalFileSystem
-from uk_rimnet_core.client import _PUBLICATION_URL, GovUkRIMNETRRMESClient
+from uk_rimnet_core.client import _PUBLICATION_URL, Client
 from uk_rimnet_core.models import (
     AnnualRelease,
     MonthlyRelease,
@@ -73,8 +73,8 @@ class _MockAsyncTransport(httpx.AsyncBaseTransport):
 
 
 class TestGovUkCatalogueClientListReleases:  # noqa: D101
-    def _make_client(self, html: str) -> GovUkRIMNETRRMESClient:
-        return GovUkRIMNETRRMESClient(
+    def _make_client(self, html: str) -> Client:
+        return Client(
             client=httpx.Client(transport=_MockTransport(html)),
         )
 
@@ -313,7 +313,7 @@ class TestGovUkCatalogueClientListReleases:  # noqa: D101
             def handle_request(self, request: httpx.Request) -> httpx.Response:  # noqa: ARG002
                 return httpx.Response(503)
 
-        client = GovUkRIMNETRRMESClient(
+        client = Client(
             client=httpx.Client(transport=_ErrorTransport()),
         )
 
@@ -334,8 +334,8 @@ class TestGovUkCatalogueClientAsyncDownloadReleases:  # noqa: D101
         self,
         html: str,
         file_responses: dict[str, bytes],
-    ) -> GovUkRIMNETRRMESClient:
-        return GovUkRIMNETRRMESClient(
+    ) -> Client:
+        return Client(
             client=httpx.Client(transport=_MockTransport(html)),
             async_client=httpx.AsyncClient(
                 transport=_MockAsyncTransport(file_responses),

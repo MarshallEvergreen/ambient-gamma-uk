@@ -10,9 +10,9 @@ async def _():
     import polars as pl
     from loguru import logger
     from uk_rimnet_core import LocationRegistry
-    from uk_rimnet_core.client import GovUkRIMNETRRMESClient
+    from uk_rimnet_core.client import Client
 
-    client = GovUkRIMNETRRMESClient()
+    client = Client()
 
     destination = "/Users/abie/Dev/uk-rimnet/bin"
 

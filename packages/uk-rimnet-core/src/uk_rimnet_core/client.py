@@ -67,7 +67,7 @@ _ANNUAL_FILENAME_PATTERNS: tuple[re.Pattern[str], ...] = (
 )
 
 
-class GovUkRIMNETRRMESClient:
+class Client:
     """Scrapes the GOV.UK publication page to discover available data releases.
 
     Args:
@@ -78,7 +78,7 @@ class GovUkRIMNETRRMESClient:
     """
 
     class _Async:
-        def __init__(self, parent: GovUkRIMNETRRMESClient) -> None:
+        def __init__(self, parent: Client) -> None:
             self._parent = parent
 
         async def list_releases(self) -> set[DataRelease]:
