@@ -121,7 +121,7 @@ def read_quarterly_stats_file(
 def _load_raw(path: str | Path, fs: AbstractFileSystem) -> pl.DataFrame:
     with fs.open(path, "rb") as f:
         if Path(path).suffix.lower() == ".xlsx":
-            return pl.read_excel(f, has_header=False)
+            return pl.read_excel(f.read(), has_header=False)
         return pl.read_csv(
             f,
             has_header=False,

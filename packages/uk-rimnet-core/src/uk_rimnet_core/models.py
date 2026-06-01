@@ -83,6 +83,20 @@ class QuarterlyData(BaseModel):
     q3: str | None = None
     q4: str | None = None
 
+    @property
+    def present_quarters(self) -> list[tuple[str, int]]:  # noqa: D102
+        present = []
+        if self.q1:
+            present.append((self.q1, 1))
+        if self.q2:
+            present.append((self.q2, 2))
+        if self.q3:
+            present.append((self.q3, 3))
+        if self.q4:
+            present.append((self.q4, 4))
+
+        return present
+
 
 MONTH_FIELDS: dict[int, str] = {
     1: "jan",
@@ -139,6 +153,15 @@ class MonthlyDataFile(BaseModel):
             getattr(self, m)
             for m in MONTH_FIELDS.values()
             if getattr(self, m) is not None
+        ]
+
+    @property
+    def present_months(self) -> list[tuple[str, int]]:
+        """Returns (path, month_number) pairs for all months with data."""
+        return [
+            (getattr(self, field), month)
+            for month, field in MONTH_FIELDS.items()
+            if getattr(self, field) is not None
         ]
 
 
