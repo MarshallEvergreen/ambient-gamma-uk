@@ -29,6 +29,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG=$(date -u +"%Y-%m")
-          gh release create "$TAG" ambient-gamma-radiation-dose-rates-across-the-uk.parquet --clobber \
+          gh release delete "$TAG" --yes 2>/dev/null || true
+          git push --delete origin "$TAG" 2>/dev/null || true
+          gh release create "$TAG" ambient-gamma-radiation-dose-rates-across-the-uk.parquet \
             --title "Dataset $TAG" \
             --notes "Monthly dataset build. One row per monitoring station per quarter, covering 2010 to present."
