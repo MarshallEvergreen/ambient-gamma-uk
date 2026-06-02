@@ -99,7 +99,7 @@ from uk_rimnet_core import build_dataset
 df = await build_dataset(destination="./data")
 ```
 
-<video src="static/Screen Recording 2026-06-02 at 20.29.10.mov" controls width="100%"></video>
+![demo](static/demo.gif)
 
 `build_dataset` handles discovery, download, location registry construction, and processing in a single call. Raw files are cached at `destination` and skipped on subsequent runs, so repeated calls only fetch new releases. Provided DESNZ does not introduce another structural change to the publication format, this means the library is designed to be run continuously as new monthly data becomes available — each run will automatically discover and download any new files and the returned DataFrame will include the newly published quarters appended to the existing archive.
 
