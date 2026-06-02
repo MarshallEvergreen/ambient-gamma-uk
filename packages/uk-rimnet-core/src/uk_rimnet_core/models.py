@@ -157,9 +157,10 @@ class MonthlyData(BaseModel):
 
     def _complete_quarter(self, quarter: int) -> list[str] | None:
         """Returns True if all months in the given quarter are present."""  # noqa: D401
+        start = (quarter - 1) * 3 + 1
         months: list[str] = [
             getattr(self, MONTH_FIELDS[m])
-            for m in range(1, quarter * 3 + 1)
+            for m in range(start, start + 3)
             if getattr(self, MONTH_FIELDS[m]) is not None
         ]
         if len(months) == 3:  # noqa: PLR2004

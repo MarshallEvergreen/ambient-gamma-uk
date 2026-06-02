@@ -11,6 +11,7 @@ from uk_rimnet_core._process import process_single_release
 from uk_rimnet_core.location_registry import LocationRegistry
 from uk_rimnet_core.models import (
     MonthlyData,
+    MonthlyYearData,
     PreMobileYearData,
     QuarterlyData,
     QuarterlyYearData,
@@ -199,8 +200,8 @@ class TestProcessTransitionYearData:
         # Act
         result = process_single_release(release, registry)
 
-        # Assert — Alpha+Gamma from H1 quarterly, Beta+Delta from H2 monthly
-        assert result.height == 4
+        # Assert — 6 rows: Alpha+Gamma (1 each, H1), Beta+Delta (2 each, H2 Q3+Q4)
+        assert result.height == 6
         assert set(result["location_name"].to_list()) == {
             "Alpha",
             "Beta",
@@ -208,17 +209,65 @@ class TestProcessTransitionYearData:
             "Delta",
         }
 
-        # Coordinates come from the registry, not the source files
-        by_location = result.sort("location_name")
-        assert by_location["latitude"].to_list() == pytest.approx(
-            [10.0, 20.0, 40.0, 30.0],  # Alpha, Beta, Delta, Gamma
-        )
-        assert by_location["longitude"].to_list() == pytest.approx(
-            [-1.0, -2.0, -4.0, -3.0],
-        )
-
-        # Fixed monitor type covers H1 quarterly (Alpha) and H2 monthly (Beta)
+        # Fixed: Alpha (1 row H1) + Beta (2 rows H2); mobile: Gamma (1) + Delta (2)
         fixed = result.filter(pl.col("monitor_type") == "fixed")
         mobile = result.filter(pl.col("monitor_type") == "mobile")
-        assert set(fixed["location_name"].to_list()) == {"Alpha", "Beta"}
-        assert set(mobile["location_name"].to_list()) == {"Gamma", "Delta"}
+        assert set(fixed["location_name"].unique().to_list()) == {"Alpha", "Beta"}
+        assert set(mobile["location_name"].unique().to_list()) == {"Gamma", "Delta"}
+
+
+class TestProcessMonthlyYearData:
+    """process_single_release routes MonthlyYearData through _process_monthly."""
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, tmp_path: Path) -> None:
+        self._tmp = tmp_path
+
+    def _write_monthly_csv(self, name: str, lat: float, lon: float) -> str:
+        path = self._tmp / name
+        path.write_text(f"latitude,longitude,reading\n{lat},{lon},0.10\n")
+        return str(path)
+
+    def test_fixed_and_mobile_months_processed_with_registry_coordinates_joined(
+        self,
+    ) -> None:
+        # Arrange — Q1 (Jan-Mar) for each monitor type; each file carries unique coords
+        # that haversine-match to distinct registry stations
+        alpha_lat, alpha_lon = 10.0, -1.0  # registry entry for Alpha (index 0)
+        beta_lat, beta_lon = 20.0, -2.0  # registry entry for Beta (index 1)
+
+        fixed_months = {
+            "jan": self._write_monthly_csv("fixed_jan.csv", alpha_lat, alpha_lon),
+            "feb": self._write_monthly_csv("fixed_feb.csv", alpha_lat, alpha_lon),
+            "mar": self._write_monthly_csv("fixed_mar.csv", alpha_lat, alpha_lon),
+        }
+        mobile_months = {
+            "jan": self._write_monthly_csv("mobile_jan.csv", beta_lat, beta_lon),
+            "feb": self._write_monthly_csv("mobile_feb.csv", beta_lat, beta_lon),
+            "mar": self._write_monthly_csv("mobile_mar.csv", beta_lat, beta_lon),
+        }
+
+        release = MonthlyYearData(
+            year=2023,
+            fixed=MonthlyData(**fixed_months),
+            mobile=MonthlyData(**mobile_months),
+        )
+        registry = _make_registry("Alpha", "Beta")
+
+        # Act
+        result = process_single_release(release, registry)
+
+        # Assert
+        assert result.height == 2
+        assert set(result["location_name"].to_list()) == {"Alpha", "Beta"}
+
+        by_location = result.sort("location_name")
+        assert by_location["latitude"].to_list() == pytest.approx([10.0, 20.0])
+        assert by_location["longitude"].to_list() == pytest.approx([-1.0, -2.0])
+
+        assert result.filter(pl.col("location_name") == "Alpha")[
+            "monitor_type"
+        ].to_list() == ["fixed"]
+        assert result.filter(pl.col("location_name") == "Beta")[
+            "monitor_type"
+        ].to_list() == ["mobile"]

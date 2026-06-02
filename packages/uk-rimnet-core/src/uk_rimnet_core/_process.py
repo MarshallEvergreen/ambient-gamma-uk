@@ -10,6 +10,7 @@ from uk_rimnet_core.models import (
     AnnualYearData,
     MonitorType,
     MonthlyData,
+    MonthlyYearData,
     PreMobileYearData,
     QuarterlyData,
     QuarterlyYearData,
@@ -205,20 +206,39 @@ def _process_transition(
     )
 
 
+def _process_monthly(
+    release: MonthlyYearData,
+    registry: LocationRegistry,
+    fs: AbstractFileSystem | None,
+) -> pl.DataFrame:
+    fixed = _process_months_into_quarters(
+        release.year,
+        release.fixed,
+        registry,
+        "fixed",
+        fs,
+    )
+    mobile = _process_months_into_quarters(
+        release.year,
+        release.mobile,
+        registry,
+        "mobile",
+        fs,
+    )
+    return pl.concat([fixed, mobile], how="diagonal")
+
+
 def process_single_release(
     release: AnnualYearData,
     registry: LocationRegistry,
     fs: AbstractFileSystem | None = None,
 ) -> pl.DataFrame:
     match release:
-        # case MonthlyYearData():  # noqa: ERA001
-        #     return _process_monthly(release)  # noqa: ERA001
+        case MonthlyYearData():
+            return _process_monthly(release, registry, fs)
         case QuarterlyYearData():
             return _process_quarterly(release, registry, fs)
         case TransitionYearData():
             return _process_transition(release, registry, fs)
         case PreMobileYearData():
             return _process_pre_mobile(release, registry, fs)
-
-    msg = f"Processing not implemented for release type {type(release)}"
-    raise NotImplementedError(msg)
