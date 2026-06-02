@@ -30,7 +30,7 @@ def _(LocationRegistry, releases):
     registry = LocationRegistry()
     registry_data = registry.build_from_releases(releases)
     registry_data
-    return (registry_data,)
+    return (registry,)
 
 
 @app.cell
@@ -42,16 +42,11 @@ def _():
 
 
 @app.cell
-def _(pl, process_single_release, registry_data, releases):
+def _(pl, process_single_release, registry, releases):
     df = pl.concat(
-        [process_single_release(releases[i]) for i in range(5 + 1)], how="diagonal"
+        [process_single_release(releases[i], registry) for i in range(5 + 1)], how="diagonal"
     )
-
-    df.drop("latitude", "longitude").join(
-        registry_data,
-        on="location_name",
-        how="left",
-    )
+    df
     return
 
 

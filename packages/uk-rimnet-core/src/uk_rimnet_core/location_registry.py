@@ -33,6 +33,23 @@ class LocationRegistry:
     def __init__(self) -> None:  # noqa: D107
         self._registry: pl.DataFrame | None = None
 
+    @property
+    def data(self) -> pl.DataFrame:
+        """Get the location registry data.
+
+        Returns:
+            A DataFrame with one row per unique monitoring location, containing
+            columns ``latitude``, ``longitude``, and ``location_name``.
+
+        Raises:
+            LocationRegistryError: If the registry has not been built yet.
+
+        """
+        if self._registry is None:
+            msg = "Registry has not been built. Call build_from_releases first."
+            raise LocationRegistryError(msg)
+        return self._registry
+
     def build_from_releases(self, releases: Sequence[AnnualYearData]) -> pl.DataFrame:
         """Build a location registry from all downloaded releases from 2025 onwards.
 

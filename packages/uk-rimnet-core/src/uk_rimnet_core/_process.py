@@ -13,24 +13,36 @@ from uk_rimnet_core.models import (
 if TYPE_CHECKING:
     from fsspec import AbstractFileSystem
 
+    from uk_rimnet_core import LocationRegistry
+
 
 def _process_pre_mobile(
     release: PreMobileYearData,
+    registry: LocationRegistry,
     fs: AbstractFileSystem | None = None,
 ) -> pl.DataFrame:
     fixed_data = release.fixed
 
-    return pl.concat(
-        [
-            read_quarterly_stats_file(pq[0], release.year, pq[1], "fixed", fs)
-            for pq in fixed_data.present_quarters
-        ],
-        how="diagonal",
+    return (
+        pl.concat(
+            [
+                read_quarterly_stats_file(pq[0], release.year, pq[1], "fixed", fs)
+                for pq in fixed_data.present_quarters
+            ],
+            how="diagonal",
+        )
+        .drop("latitude", "longitude")
+        .join(
+            registry.data,
+            on="location_name",
+            how="left",
+        )
     )
 
 
 def process_single_release(
     release: AnnualYearData,
+    registry: LocationRegistry,
     fs: AbstractFileSystem | None = None,
 ) -> pl.DataFrame:
     match release:
@@ -41,7 +53,7 @@ def process_single_release(
         # case TransitionYearData():  # noqa: ERA001
         #     return _process_transition(release)  # noqa: ERA001
         case PreMobileYearData():
-            return _process_pre_mobile(release, fs)
+            return _process_pre_mobile(release, registry, fs)
 
     msg = f"Processing not implemented for release type {type(release)}"
     raise NotImplementedError(msg)
