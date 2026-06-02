@@ -29,7 +29,10 @@ def _process_pre_mobile(
     )
 
 
-def process_single_release(release: AnnualYearData) -> pl.DataFrame:
+def process_single_release(
+    release: AnnualYearData,
+    fs: AbstractFileSystem | None = None,
+) -> pl.DataFrame:
     match release:
         # case MonthlyYearData():  # noqa: ERA001
         #     return _process_monthly(release)  # noqa: ERA001
@@ -38,7 +41,7 @@ def process_single_release(release: AnnualYearData) -> pl.DataFrame:
         # case TransitionYearData():  # noqa: ERA001
         #     return _process_transition(release)  # noqa: ERA001
         case PreMobileYearData():
-            return _process_pre_mobile(release)
+            return _process_pre_mobile(release, fs)
 
     msg = f"Processing not implemented for release type {type(release)}"
     raise NotImplementedError(msg)
