@@ -4,6 +4,7 @@ import asyncio
 from typing import TYPE_CHECKING
 
 import polars as pl
+from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn
 
 from uk_rimnet_core._process import process_single_release
 from uk_rimnet_core.client import Client
@@ -53,10 +54,20 @@ async def build_dataset_async(
     )
     registry = LocationRegistry()
     registry.build_from_releases(releases)
-    return pl.concat(
-        [process_single_release(r, registry) for r in releases],
-        how="diagonal",
-    )
+    with Progress(
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        MofNCompleteColumn(),
+    ) as progress:
+        task = progress.add_task("Processing releases", total=len(releases))
+        frames = []
+        for release in releases:
+            frames.append(process_single_release(release, registry))
+            progress.advance(task)
+
+    df = pl.concat(frames, how="diagonal")
+    df.glimpse()
+    return df
 
 
 def build_dataset(destination: str, client: Client | None = None) -> pl.DataFrame:

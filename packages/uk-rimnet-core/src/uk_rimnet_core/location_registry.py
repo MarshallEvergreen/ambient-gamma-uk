@@ -97,8 +97,8 @@ class LocationRegistry:
             pl.concat(frames)
             .group_by("monitor_location")
             .agg(
-                pl.col("latitude").mean(),
-                pl.col("longitude").mean(),
+                pl.col("latitude").mean().round(5),
+                pl.col("longitude").mean().round(5),
             )
             .rename({"monitor_location": MONTHLY_ALIASES["monitor_location"]})
         )
