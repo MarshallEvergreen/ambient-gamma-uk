@@ -50,6 +50,8 @@ _MONTHLY_STAT_COLS: frozenset[str] = frozenset(
     ["latitude", "longitude", "mean", "min", "max", "std_dev", "site_normal"],
 )
 
+_MAX_STATION_MATCH_DISTANCE_KM: float = 5.0
+
 
 def _assign_locations_from_registry(
     data: pl.DataFrame,
@@ -75,6 +77,7 @@ def _assign_locations_from_registry(
         cross.sort("_dist")
         .group_by("_row_idx")
         .agg([pl.first(c) for c in agg_cols])
+        .filter(pl.col("_dist") <= _MAX_STATION_MATCH_DISTANCE_KM)
         .drop("_row_idx", "_reg_lat", "_reg_lon", "_dist", "location_name")
         .rename({"_reg_name": "location_name"})
     )
