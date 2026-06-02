@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UK Ambient Gamma Radiation Dose Rates</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: #f5f5f5;
+    }
+
+    #controls {
+      padding: 10px 20px 12px;
+      background: #fff;
+      border-bottom: 1px solid #ddd;
+      flex-shrink: 0;
+    }
+
+    #header-row {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    #header-row h1 {
+      font-size: 13px;
+      font-weight: 600;
+      color: #222;
+      letter-spacing: -0.01em;
+    }
+
+    #period-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1a5fa8;
+      min-width: 60px;
+    }
+
+    #timeline-row {
+      position: relative;
+      padding-bottom: 18px;
+    }
+
+    #timeline {
+      width: 100%;
+      height: 4px;
+      cursor: pointer;
+      appearance: none;
+      background: transparent;
+      outline: none;
+    }
+
+    #timeline::-webkit-slider-runnable-track {
+      height: 4px;
+      border-radius: 2px;
+      background: linear-gradient(to right, #1a5fa8 var(--pct, 0%), #ddd var(--pct, 0%));
+    }
+
+    #timeline::-moz-range-track {
+      height: 4px;
+      border-radius: 2px;
+      background: #ddd;
+    }
+
+    #timeline::-moz-range-progress {
+      height: 4px;
+      border-radius: 2px;
+      background: #1a5fa8;
+    }
+
+    #timeline::-webkit-slider-thumb {
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #1a5fa8;
+      margin-top: -5px;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    }
+
+    #timeline::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #1a5fa8;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    }
+
+    #year-labels {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 16px;
+      pointer-events: none;
+    }
+
+    #playback-row {
+      display: flex;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    #play-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #1a5fa8;
+      background: none;
+      border: 1px solid #1a5fa8;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    #play-btn:hover { background: #1a5fa8; color: #fff; }
+
+    #play-btn svg { display: block; }
+
+    .year-label {
+      position: absolute;
+      font-size: 10px;
+      color: #aaa;
+      transform: translateX(-50%);
+      white-space: nowrap;
+    }
+
+    .year-label.current-year {
+      color: #1a5fa8;
+      font-weight: 600;
+    }
+
+    #map { flex: 1; }
+
+    #loading {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.85);
+      font-size: 13px;
+      color: #555;
+      z-index: 1000;
+    }
+
+    .legend {
+      background: white;
+      padding: 10px 14px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 12px;
+      line-height: 2;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    }
+
+    .legend b { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #555; }
+    .legend hr { margin: 5px 0; border: none; border-top: 1px solid #eee; }
+    .legend svg { vertical-align: middle; margin-right: 4px; }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <div id="header-row">
+      <h1>UK Ambient Gamma Radiation Dose Rates</h1>
+      <span id="period-label"></span>
+    </div>
+    <div id="timeline-row">
+      <input type="range" id="timeline" min="0" max="0" value="0" step="1">
+      <div id="year-labels"></div>
+    </div>
+    <div id="playback-row">
+      <button id="play-btn">
+        <svg id="play-icon" width="10" height="12" viewBox="0 0 10 12" fill="currentColor">
+          <polygon points="0,0 10,6 0,12"/>
+        </svg>
+        <svg id="pause-icon" width="10" height="12" viewBox="0 0 10 12" fill="currentColor" style="display:none">
+          <rect x="0" y="0" width="3.5" height="12"/>
+          <rect x="6.5" y="0" width="3.5" height="12"/>
+        </svg>
+        <span id="play-label">Play</span>
+      </button>
+    </div>
+  </div>
+
+  <div id="map"></div>
+  <div id="loading">Loading dataset…</div>
+
+  <script>
+    // For production, swap this to the GitHub releases URL:
+    // const DATA_URL = 'https://github.com/MarshallEvergreen/uk-rimnet/releases/latest/download/ambient-gamma-radiation-dose-rates-across-the-uk.json';
+    const DATA_URL = './ambient-gamma-radiation-dose-rates-across-the-uk.json';
+
+    const RADIUS_MIN = 5;
+    const RADIUS_MAX = 22;
+    const ELEVATED_THRESHOLD = 1.0;
+    const ELEVATED_MAX       = 1.15;
+
+    // --- map setup ---
+
+    const map = L.map('map').setView([54.5, -2.5], 6);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: 'abcd',
+      maxZoom: 19,
+    }).addTo(map);
+
+    const legend = L.control({ position: 'bottomleft' });
+    legend.onAdd = () => {
+      const div = L.DomUtil.create('div', 'legend');
+      div.innerHTML = `
+        <b>Fixed monitors</b><br>
+        <svg width="16" height="16"><circle cx="8" cy="8" r="6" fill="hsl(120,72%,38%)"/></svg>Normal (&le;1.0&times;)<br>
+        <svg width="16" height="16"><circle cx="8" cy="8" r="6" fill="hsl(60,72%,35%)"/></svg>Elevated (~1.08&times;)<br>
+        <svg width="16" height="16"><circle cx="8" cy="8" r="6" fill="hsl(0,72%,32%)"/></svg>High (&ge;1.15&times;)
+        <hr>
+        <b>Mobile monitors</b><br>
+        <svg width="16" height="16"><circle cx="8" cy="8" r="6" fill="#1a5fa8"/></svg>Mobile (no site normal)
+        <hr>
+        <b>Size — mean dose rate</b>
+      `;
+      return div;
+    };
+    legend.addTo(map);
+
+    // --- colour / scale helpers ---
+
+    function fillColour(ratio) {
+      const t   = Math.max(0, Math.min(1, (ratio - ELEVATED_THRESHOLD) / (ELEVATED_MAX - ELEVATED_THRESHOLD)));
+      const hue = (1 - t) * 120;
+      const lit = (0.38 - t * 0.06) * 100;
+      return `hsl(${hue}, 72%, ${lit}%)`;
+    }
+
+    function scaleValue(v, lo, hi, outLo, outHi) {
+      if (hi === lo) return (outLo + outHi) / 2;
+      return outLo + Math.max(0, Math.min(1, (v - lo) / (hi - lo))) * (outHi - outLo);
+    }
+
+    // --- render ---
+
+    let allData = [];
+    let periods = [];
+    const markerLayer = L.layerGroup().addTo(map);
+
+    function render() {
+      const idx     = parseInt(document.getElementById('timeline').value, 10);
+      const { year, quarter } = periods[idx];
+
+      document.getElementById('period-label').textContent = `${year} Q${quarter}`;
+
+      // highlight current year label
+      document.querySelectorAll('.year-label').forEach(el => {
+        el.classList.toggle('current-year', parseInt(el.dataset.year, 10) === year);
+      });
+
+      // update track fill
+      const slider = document.getElementById('timeline');
+      const pct = (idx / (periods.length - 1)) * 100;
+      slider.style.setProperty('--pct', `${pct}%`);
+
+      markerLayer.clearLayers();
+
+      const rows = allData.filter(r =>
+        r.year === year &&
+        r.quarter === quarter &&
+        r.latitude != null &&
+        r.longitude != null
+      );
+
+      if (rows.length === 0) return;
+
+      const meanVals = rows.map(r => r.mean).filter(v => v != null);
+      const meanLo   = Math.min(...meanVals);
+      const meanHi   = Math.max(...meanVals);
+
+      for (const row of rows) {
+        const mean   = row.mean;
+        const std    = row.std_dev;
+        const normal = row.site_normal;
+
+        const radius    = scaleValue(mean ?? meanLo, meanLo, meanHi, RADIUS_MIN, RADIUS_MAX);
+        const ratio     = (mean != null && normal != null && normal > 0) ? mean / normal : 1.0;
+        const fillColor = row.monitor_type === 'mobile' ? '#1a5fa8' : fillColour(ratio);
+
+        const fmt = (v, dp) => v != null ? v.toFixed(dp) : 'N/A';
+        const ratioStr = (mean != null && normal != null && normal > 0)
+          ? `${ratio.toFixed(2)}&times;`
+          : 'N/A (no site normal)';
+
+        L.circleMarker([row.latitude, row.longitude], {
+          radius,
+          color: '#111111',
+          weight: 1.5,
+          fillColor,
+          fillOpacity: 0.85,
+        })
+          .bindTooltip(row.location_name)
+          .bindPopup(
+            `<b>${row.location_name}</b><br>
+             Type: ${row.monitor_type}<br>
+             Mean: ${fmt(mean, 3)} &micro;Gy/h<br>
+             Site normal: ${fmt(normal, 3)} &micro;Gy/h<br>
+             Ratio: ${ratioStr}<br>
+             Std dev: ${fmt(std, 3)} &micro;Gy/h`,
+            { maxWidth: 240 }
+          )
+          .addTo(markerLayer);
+      }
+    }
+
+    function buildYearLabels() {
+      const container = document.getElementById('year-labels');
+      container.innerHTML = '';
+      const total = periods.length - 1;
+
+      // one label per year, positioned at Q1 of that year
+      const years = [...new Set(periods.map(p => p.year))];
+      for (const year of years) {
+        const idx = periods.findIndex(p => p.year === year);
+        const pct = (idx / total) * 100;
+        const span = document.createElement('span');
+        span.className = 'year-label';
+        span.dataset.year = year;
+        span.textContent = year;
+        span.style.left = `${pct}%`;
+        container.appendChild(span);
+      }
+    }
+
+    // --- playback ---
+
+    let playInterval = null;
+
+    function setPlaying(playing) {
+      document.getElementById('play-icon').style.display  = playing ? 'none'  : 'block';
+      document.getElementById('pause-icon').style.display = playing ? 'block' : 'none';
+      document.getElementById('play-label').textContent   = playing ? 'Pause' : 'Play';
+    }
+
+    function stopPlayback() {
+      clearInterval(playInterval);
+      playInterval = null;
+      setPlaying(false);
+    }
+
+    document.getElementById('play-btn').addEventListener('click', () => {
+      if (playInterval) {
+        stopPlayback();
+        return;
+      }
+
+      setPlaying(true);
+      playInterval = setInterval(() => {
+        const slider = document.getElementById('timeline');
+        slider.value = (parseInt(slider.value, 10) + 1) % periods.length;
+        render();
+      }, 1500);
+    });
+
+    // --- init ---
+
+    async function init() {
+      const res = await fetch(DATA_URL);
+      allData   = await res.json();
+
+      document.getElementById('loading').remove();
+
+      // build sorted list of all (year, quarter) pairs present in the data
+      periods = [...new Map(
+        allData.map(r => [`${r.year}-${r.quarter}`, { year: r.year, quarter: r.quarter }])
+      ).values()].sort((a, b) => a.year !== b.year ? a.year - b.year : a.quarter - b.quarter);
+
+      const slider = document.getElementById('timeline');
+      slider.max   = periods.length - 1;
+      slider.value = periods.length - 1;
+
+      buildYearLabels();
+
+      slider.addEventListener('input', () => { stopPlayback(); render(); });
+
+      render();
+    }
+
+    init().catch(err => {
+      document.getElementById('loading').textContent = 'Failed to load dataset.';
+      console.error(err);
+    });
+  </script>
+</body>
+</html>

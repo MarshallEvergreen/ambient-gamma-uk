@@ -8,4 +8,4 @@ from uk_rimnet_core import build_dataset
 if __name__ == "__main__":
     output = Path(sys.argv[1])
     df = build_dataset(destination="./data")
-    df.write_parquet(output)
+    df.write_json(output)

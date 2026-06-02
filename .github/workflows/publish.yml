@@ -22,7 +22,7 @@ jobs:
         run: uv run poe sync
 
       - name: Build dataset
-        run: uv run python scripts/publish-dataset.py ambient-gamma-radiation-dose-rates-across-the-uk.parquet
+        run: uv run python scripts/publish-dataset.py ambient-gamma-radiation-dose-rates-across-the-uk.json
 
       - name: Create release
         env:
@@ -31,6 +31,6 @@ jobs:
           TAG=$(date -u +"%Y-%m")
           gh release delete "$TAG" --yes 2>/dev/null || true
           git push --delete origin "$TAG" 2>/dev/null || true
-          gh release create "$TAG" ambient-gamma-radiation-dose-rates-across-the-uk.parquet \
+          gh release create "$TAG" ambient-gamma-radiation-dose-rates-across-the-uk.json \
             --title "Dataset $TAG" \
             --notes "Monthly dataset build. One row per monitoring station per quarter, covering 2010 to present."
