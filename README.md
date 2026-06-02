@@ -96,7 +96,7 @@ This is a [UV workspace](https://docs.astral.sh/uv/concepts/workspaces/) contain
 ```python
 from uk_rimnet_core import build_dataset
 
-df = await build_dataset(destination="./data")
+df = build_dataset(destination="./data")
 ```
 
 ![demo](static/demo.gif)
@@ -111,7 +111,7 @@ Both `build_dataset` and the underlying `Client` accept an `fs` parameter that t
 import s3fs
 from uk_rimnet_core import build_dataset
 
-df = await build_dataset(
+df = build_dataset(
     destination="s3://my-bucket/uk-rimnet/",
     fs=s3fs.S3FileSystem(),
 )
