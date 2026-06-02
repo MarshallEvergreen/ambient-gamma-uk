@@ -61,10 +61,13 @@ def _assign_locations_from_registry(
     reg = registry.data.rename(
         {"location_name": "_reg_name", "latitude": "_reg_lat", "longitude": "_reg_lon"},
     )
+    # Take the cross join of the data with the registry
     cross = (
         data.with_row_index("_row_idx")
         .join(reg, how="cross")
         .with_columns(
+            # Calculate the distance between the data point and all registry locations
+            # using the haversine formula
             haversine(
                 pl.col("latitude"),
                 pl.col("longitude"),
@@ -75,11 +78,16 @@ def _assign_locations_from_registry(
     )
     agg_cols = [c for c in cross.columns if c != "_row_idx"]
     return (
+        # Sort by distance
         cross.sort("_dist")
         .group_by("_row_idx")
+        # Take the closest registry location to each data point and drop the distance
         .agg([pl.first(c) for c in agg_cols])
+        # Filter out any matches that are too far away to be plausible
         .filter(pl.col("_dist") <= _MAX_STATION_MATCH_DISTANCE_KM)
+        # Drop the intermediate columns used for matching and rename the registry name
         .drop("_row_idx", "_reg_lat", "_reg_lon", "_dist", "location_name")
+        # Rename the matched registry location to be the official location name for this station  # noqa: E501
         .rename({"_reg_name": "location_name"})
     )
 
@@ -102,6 +110,7 @@ def _process_months_into_quarters(
     for quarter_idx, files in enumerate(potentially_null_quarters):
         if files is None:
             continue
+
         quarter = quarter_idx + 1
         start_month = quarter_idx * 3 + 1
         monthly = pl.concat(
@@ -112,9 +121,18 @@ def _process_months_into_quarters(
             how="diagonal",
         )
         stat_cols = [c for c in monthly.columns if c in _MONTHLY_STAT_COLS]
+
+        # If the location names are all null, attempt to assign them from the registry
+        # based on geospatial proximity. This is necessary for some early
+        # releases where the location name column is empty
         if monthly["location_name"].is_null().all():
             monthly = _assign_locations_from_registry(monthly, registry)
+
         quarter_frames.append(
+            # Group by location and take the mean of all stats across
+            # the three months in the quarter, then
+            # re-join with the registry to get lat/lon and drop any stations
+            # that can't be matched to a known location
             monthly.group_by("location_name")
             .agg([pl.mean(c) for c in stat_cols])
             .with_columns(
@@ -123,6 +141,9 @@ def _process_months_into_quarters(
                 pl.lit(monitoring_type).alias("monitor_type"),
                 pl.lit("µGy/h").alias("unit"),
             )
+            # Use the authoritative location from the registry rather
+            # than the one in the monthly files averaged across the months
+            # as these could differ slightly due to drift.
             .drop("latitude", "longitude")
             .join(registry.data, on="location_name", how="left"),
         )
