@@ -44,7 +44,7 @@ def _():
 @app.cell
 def _(pl, process_single_release, registry, releases):
     df = pl.concat(
-        [process_single_release(releases[i], registry) for i in range(5 + 1)], how="diagonal"
+        [process_single_release(releases[i], registry) for i in range(10 + 1)], how="diagonal"
     )
     df
     return
