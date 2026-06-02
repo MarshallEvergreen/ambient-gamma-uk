@@ -22,13 +22,13 @@ jobs:
         run: uv run poe sync
 
       - name: Build dataset
-        run: uv run python scripts/publish-dataset.py uk-rimnet-dataset.parquet
+        run: uv run python scripts/publish-dataset.py ambient-gamma-radiation-dose-rates-across-the-uk.parquet
 
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG=$(date -u +"%Y-%m")
-          gh release create "$TAG" uk-rimnet-dataset.parquet --clobber \
+          gh release create "$TAG" ambient-gamma-radiation-dose-rates-across-the-uk.parquet --clobber \
             --title "Dataset $TAG" \
             --notes "Monthly dataset build. One row per monitoring station per quarter, covering 2010 to present."

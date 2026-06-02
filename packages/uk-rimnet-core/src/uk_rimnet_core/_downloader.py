@@ -44,7 +44,9 @@ class Downloader:
         async_client: httpx.AsyncClient | None = None,
         sync_client: httpx.Client | None = None,
     ) -> None:
-        self._async_client = async_client or httpx.AsyncClient()
+        self._async_client = async_client or httpx.AsyncClient(
+            timeout=httpx.Timeout(connect=10.0, read=300.0, write=None, pool=None),
+        )
         self._sync_client = sync_client or httpx.Client()
 
     async def download_all(
