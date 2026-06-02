@@ -86,12 +86,20 @@ def _(df, mo, pl, quarter_dropdown, year_dropdown):
         return "#{:02x}{:02x}{:02x}".format(int(r * 255), int(g * 255), int(b * 255))
 
     def _fill_colour(ratio: float) -> str:
-        t = max(0.0, min(1.0, (ratio - _ELEVATED_THRESHOLD) / (_ELEVATED_MAX - _ELEVATED_THRESHOLD)))
+        t = max(
+            0.0,
+            min(
+                1.0,
+                (ratio - _ELEVATED_THRESHOLD) / (_ELEVATED_MAX - _ELEVATED_THRESHOLD),
+            ),
+        )
         hue = (1.0 - t) * (120.0 / 360.0)
         lightness = 0.38 - t * 0.06
         return _hsl_hex(hue, 0.72, lightness)
 
-    def _scale(value: float, lo: float, hi: float, out_lo: float, out_hi: float) -> float:
+    def _scale(
+        value: float, lo: float, hi: float, out_lo: float, out_hi: float
+    ) -> float:
         if hi == lo:
             return (out_lo + out_hi) / 2
         t = max(0.0, min(1.0, (value - lo) / (hi - lo)))
@@ -120,7 +128,9 @@ def _(df, mo, pl, quarter_dropdown, year_dropdown):
             _std: float | None = _row["std_dev"]
             _normal: float | None = _row["site_normal"]
 
-            _radius = _scale(_std or _std_lo, _std_lo, _std_hi, _RADIUS_MIN, _RADIUS_MAX)
+            _radius = _scale(
+                _std or _std_lo, _std_lo, _std_hi, _RADIUS_MIN, _RADIUS_MAX
+            )
 
             if _mean is not None and _normal is not None and _normal > 0:
                 _ratio = _mean / _normal
