@@ -1,5 +1,6 @@
 """High-level dataset builder for the full RIMNET/RREMS archive."""
 
+import asyncio
 from typing import TYPE_CHECKING
 
 import polars as pl
@@ -12,8 +13,7 @@ if TYPE_CHECKING:
     from fsspec import AbstractFileSystem
 
 
-# TODO: Provide non-async version of this function  # noqa: FIX002, TD002, TD003
-async def build_dataset(
+async def build_dataset_async(
     destination: str,
     client: Client | None = None,
     fs: AbstractFileSystem | None = None,
@@ -57,3 +57,8 @@ async def build_dataset(
         [process_single_release(r, registry) for r in releases],
         how="diagonal",
     )
+
+
+def build_dataset(destination: str, client: Client | None = None) -> pl.DataFrame:
+    """Synchronous version of build_dataset."""  # noqa: D401
+    return asyncio.run(build_dataset_async(destination=destination, client=client))
