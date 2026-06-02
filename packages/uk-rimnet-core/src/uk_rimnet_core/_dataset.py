@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from fsspec import AbstractFileSystem
 
 
+# TODO: Provide non-async version of this function  # noqa: FIX002, TD002, TD003
 async def build_dataset(
     destination: str,
     client: Client | None = None,
