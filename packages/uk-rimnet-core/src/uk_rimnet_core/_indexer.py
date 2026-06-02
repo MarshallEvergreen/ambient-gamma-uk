@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from uk_rimnet_core.models import (
     MONTH_FIELDS,
     AnnualYearData,
-    MonthlyDataFile,
+    MonthlyData,
     MonthlyRelease,
     MonthlyYearData,
     PreMobileYearData,
@@ -171,8 +171,8 @@ def _build_transition_year(pairs: list[tuple[DataRelease, str]]) -> TransitionYe
     return TransitionYearData(
         quarterly_fixed=QuarterlyData(**quarterly_fixed),
         quarterly_mobile=QuarterlyData(**quarterly_mobile),
-        monthly_fixed=MonthlyDataFile(**monthly_fixed),
-        monthly_mobile=MonthlyDataFile(**monthly_mobile),
+        monthly_fixed=MonthlyData(**monthly_fixed),
+        monthly_mobile=MonthlyData(**monthly_mobile),
     )
 
 
@@ -203,6 +203,6 @@ def _build_monthly_year(
                     mobile_fields[field] = path
     return MonthlyYearData(
         year=year,
-        fixed=MonthlyDataFile(**fixed_fields),
-        mobile=MonthlyDataFile(**mobile_fields),
+        fixed=MonthlyData(**fixed_fields),
+        mobile=MonthlyData(**mobile_fields),
     )

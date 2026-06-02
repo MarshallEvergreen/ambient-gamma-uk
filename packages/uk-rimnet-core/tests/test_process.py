@@ -10,9 +10,11 @@ import pytest
 from uk_rimnet_core._process import process_single_release
 from uk_rimnet_core.location_registry import LocationRegistry
 from uk_rimnet_core.models import (
+    MonthlyData,
     PreMobileYearData,
     QuarterlyData,
     QuarterlyYearData,
+    TransitionYearData,
 )
 
 _CSV_HEADER = "Location,Mean,Min,Max,Std Dev\n"
@@ -133,3 +135,90 @@ class TestProcessQuarterlyYearData:
         assert by_location["longitude"].to_list() == pytest.approx(
             [-1.0, -2.0, -4.0, -3.0],
         )
+
+
+class TestProcessTransitionYearData:
+    """process_single_release routes TransitionYearData through _process_transition."""
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, tmp_path: Path) -> None:
+        self._tmp = tmp_path
+
+    def _write_quarterly_csv(self, name: str, location: str) -> str:
+        path = self._tmp / name
+        path.write_text(_quarter_csv(location))
+        return str(path)
+
+    def _write_monthly_csv(self, name: str, lat: float, lon: float) -> str:
+        # Monthly streaming format: no location name, coordinates only.
+        # _assign_locations_from_registry resolves to named locations via haversine.
+        path = self._tmp / name
+        path.write_text(f"latitude,longitude,reading\n{lat},{lon},0.10\n")
+        return str(path)
+
+    def test_h1_quarterly_and_h2_monthly_combined_with_registry_coordinates_joined(
+        self,
+    ) -> None:
+        # Arrange — one quarterly file per monitor type to give one row each from H1
+        fixed_q1 = self._write_quarterly_csv("fixed_q1.csv", "Alpha")
+        mobile_q1 = self._write_quarterly_csv("mobile_q1.csv", "Gamma")
+
+        # H2 monthly files carry coordinates matching registry entries for Beta/Delta.
+        # TransitionYearData requires all six H2 months; _complete_quarter yields
+        # one complete Q3 triplet (Jul-Sep) when all six are present.
+        beta_lat, beta_lon = 20.0, -2.0  # registry entry for Beta (index 1)
+        delta_lat, delta_lon = 40.0, -4.0  # registry entry for Delta (index 3)
+
+        fixed_monthly = {
+            "jul": self._write_monthly_csv("fixed_jul.csv", beta_lat, beta_lon),
+            "aug": self._write_monthly_csv("fixed_aug.csv", beta_lat, beta_lon),
+            "sep": self._write_monthly_csv("fixed_sep.csv", beta_lat, beta_lon),
+            "oct": self._write_monthly_csv("fixed_oct.csv", beta_lat, beta_lon),
+            "nov": self._write_monthly_csv("fixed_nov.csv", beta_lat, beta_lon),
+            "dec": self._write_monthly_csv("fixed_dec.csv", beta_lat, beta_lon),
+        }
+        mobile_monthly = {
+            "jul": self._write_monthly_csv("mobile_jul.csv", delta_lat, delta_lon),
+            "aug": self._write_monthly_csv("mobile_aug.csv", delta_lat, delta_lon),
+            "sep": self._write_monthly_csv("mobile_sep.csv", delta_lat, delta_lon),
+            "oct": self._write_monthly_csv("mobile_oct.csv", delta_lat, delta_lon),
+            "nov": self._write_monthly_csv("mobile_nov.csv", delta_lat, delta_lon),
+            "dec": self._write_monthly_csv("mobile_dec.csv", delta_lat, delta_lon),
+        }
+
+        release = TransitionYearData(
+            year=2022,
+            quarterly_fixed=QuarterlyData(q1=fixed_q1),
+            quarterly_mobile=QuarterlyData(q1=mobile_q1),
+            monthly_fixed=MonthlyData(**fixed_monthly),
+            monthly_mobile=MonthlyData(**mobile_monthly),
+        )
+        # Registry: Alpha=10/-1, Beta=20/-2, Gamma=30/-3, Delta=40/-4
+        registry = _make_registry("Alpha", "Beta", "Gamma", "Delta")
+
+        # Act
+        result = process_single_release(release, registry)
+
+        # Assert — Alpha+Gamma from H1 quarterly, Beta+Delta from H2 monthly
+        assert result.height == 4
+        assert set(result["location_name"].to_list()) == {
+            "Alpha",
+            "Beta",
+            "Gamma",
+            "Delta",
+        }
+
+        # Coordinates come from the registry, not the source files
+        by_location = result.sort("location_name")
+        assert by_location["latitude"].to_list() == pytest.approx(
+            [10.0, 20.0, 40.0, 30.0],  # Alpha, Beta, Delta, Gamma
+        )
+        assert by_location["longitude"].to_list() == pytest.approx(
+            [-1.0, -2.0, -4.0, -3.0],
+        )
+
+        # Fixed monitor type covers H1 quarterly (Alpha) and H2 monthly (Beta)
+        fixed = result.filter(pl.col("monitor_type") == "fixed")
+        mobile = result.filter(pl.col("monitor_type") == "mobile")
+        assert set(fixed["location_name"].to_list()) == {"Alpha", "Beta"}
+        assert set(mobile["location_name"].to_list()) == {"Gamma", "Delta"}

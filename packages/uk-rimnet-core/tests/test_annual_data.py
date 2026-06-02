@@ -5,7 +5,7 @@ import datetime
 import pytest
 from pydantic import ValidationError
 from uk_rimnet_core.models import (
-    MonthlyDataFile,
+    MonthlyData,
     MonthlyYearData,
     PreMobileYearData,
     QuarterlyData,
@@ -89,8 +89,8 @@ class TestTransitionYearData:  # noqa: D101
     def _quarterly_h1(self) -> QuarterlyData:
         return QuarterlyData(q1="/p/q1.csv", q2="/p/q2.csv")
 
-    def _monthly_h2(self) -> MonthlyDataFile:
-        return MonthlyDataFile(
+    def _monthly_h2(self) -> MonthlyData:
+        return MonthlyData(
             jul="/p/jul.csv",
             aug="/p/aug.csv",
             sep="/p/sep.csv",
@@ -131,7 +131,7 @@ class TestTransitionYearData:  # noqa: D101
         # A January file in the monthly data conflicts with the quarterly files for Q1
         # Arrange
         quarterly = self._quarterly_h1()
-        bad_monthly = MonthlyDataFile(
+        bad_monthly = MonthlyData(
             jan="/p/jan.csv",
             jul="/p/jul.csv",
             aug="/p/aug.csv",
@@ -154,7 +154,7 @@ class TestTransitionYearData:  # noqa: D101
         # Sep missing from fixed monthly — all six H2 months must be present
         # Arrange
         quarterly = self._quarterly_h1()
-        incomplete_monthly = MonthlyDataFile(
+        incomplete_monthly = MonthlyData(
             jul="/p/jul.csv",
             aug="/p/aug.csv",
             oct="/p/oct.csv",
@@ -186,8 +186,8 @@ class TestTransitionYearData:  # noqa: D101
 
 
 class TestMonthlyYearData:  # noqa: D101
-    def _monthly(self) -> MonthlyDataFile:
-        return MonthlyDataFile(
+    def _monthly(self) -> MonthlyData:
+        return MonthlyData(
             jan="/p/jan.csv",
             feb="/p/feb.csv",
             mar="/p/mar.csv",

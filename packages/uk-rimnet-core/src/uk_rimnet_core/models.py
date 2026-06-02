@@ -114,7 +114,7 @@ MONTH_FIELDS: dict[int, str] = {
 }
 
 
-class MonthlyDataFile(BaseModel):
+class MonthlyData(BaseModel):
     """File paths for monthly streaming CSVs.
 
     Attributes:
@@ -155,14 +155,36 @@ class MonthlyDataFile(BaseModel):
             if getattr(self, m) is not None
         ]
 
-    @property
-    def present_months(self) -> list[tuple[str, int]]:
-        """Returns (path, month_number) pairs for all months with data."""
-        return [
-            (getattr(self, field), month)
-            for month, field in MONTH_FIELDS.items()
-            if getattr(self, field) is not None
+    def _complete_quarter(self, quarter: int) -> list[str] | None:
+        """Returns True if all months in the given quarter are present."""  # noqa: D401
+        months: list[str] = [
+            getattr(self, MONTH_FIELDS[m])
+            for m in range(1, quarter * 3 + 1)
+            if getattr(self, MONTH_FIELDS[m]) is not None
         ]
+        if len(months) == 3:  # noqa: PLR2004
+            return months
+        return None
+
+    @property
+    def q1_monthly_file_names(self) -> list[str] | None:
+        """Returns paths for Jan-Mar if present."""
+        return self._complete_quarter(1)
+
+    @property
+    def q2_monthly_file_names(self) -> list[str] | None:
+        """Returns paths for Apr-Jun if present."""
+        return self._complete_quarter(2)
+
+    @property
+    def q3_monthly_file_names(self) -> list[str] | None:
+        """Returns paths for Jul-Sep if present."""
+        return self._complete_quarter(3)
+
+    @property
+    def q4_monthly_file_names(self) -> list[str] | None:
+        """Returns paths for Oct-Dec if present."""
+        return self._complete_quarter(4)
 
 
 class AnnualDataError(ValueError):
@@ -239,8 +261,8 @@ class TransitionYearData(BaseModel):
     year: Literal[2022] = 2022
     quarterly_fixed: QuarterlyData
     quarterly_mobile: QuarterlyData
-    monthly_fixed: MonthlyDataFile
-    monthly_mobile: MonthlyDataFile
+    monthly_fixed: MonthlyData
+    monthly_mobile: MonthlyData
 
     @model_validator(mode="after")
     def _validate_quarterly_is_h1_only(self) -> Self:
@@ -324,8 +346,8 @@ class MonthlyYearData(BaseModel):
 
     kind: Literal["monthly"] = "monthly"
     year: int
-    fixed: MonthlyDataFile = MonthlyDataFile()
-    mobile: MonthlyDataFile = MonthlyDataFile()
+    fixed: MonthlyData = MonthlyData()
+    mobile: MonthlyData = MonthlyData()
 
     @field_validator("year")
     @classmethod

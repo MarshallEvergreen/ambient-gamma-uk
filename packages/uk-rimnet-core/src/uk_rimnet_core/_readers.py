@@ -185,7 +185,7 @@ def read_monthly_csv(
         if (canonical := MONTHLY_ALIASES.get(raw.strip().lower())) is not None
         and canonical in MONTHLY_REQUIRED
     }
-    data = data.rename(normalised_names).select(list(normalised_names))
+    data = data.rename(normalised_names).select(list(normalised_names.values()))
     for col in {"latitude", "longitude", "reading", "site_normal"} & set(data.columns):
         data = data.with_columns(pl.col(col).cast(pl.Float64))
 

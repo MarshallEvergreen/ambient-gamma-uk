@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import polars as pl
 import pytest
 from uk_rimnet_core.location_registry import LocationRegistry, LocationRegistryError
-from uk_rimnet_core.models import MonthlyDataFile, MonthlyYearData
+from uk_rimnet_core.models import MonthlyData, MonthlyYearData
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -51,8 +51,8 @@ class TestLocationRegistryBuildFromReleases:  # noqa: D101
                 mobile_kwargs[months[i]] = f
         return MonthlyYearData(
             year=year,
-            fixed=MonthlyDataFile(**fixed_kwargs),
-            mobile=MonthlyDataFile(**mobile_kwargs),
+            fixed=MonthlyData(**fixed_kwargs),
+            mobile=MonthlyData(**mobile_kwargs),
         )
 
     def test_averages_coordinates_across_files(self) -> None:
