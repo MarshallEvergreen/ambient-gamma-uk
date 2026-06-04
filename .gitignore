@@ -219,3 +219,6 @@ __marimo__/
 
 bin
 .DS_Store
+
+# Dataset — published as GitHub release assets, not committed to the repo
+docs/*.json

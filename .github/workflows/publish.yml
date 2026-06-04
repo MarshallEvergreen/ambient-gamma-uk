@@ -33,4 +33,5 @@ jobs:
           git push --delete origin "$TAG" 2>/dev/null || true
           gh release create "$TAG" ambient-gamma-radiation-dose-rates-across-the-uk.json \
             --title "Dataset $TAG" \
+            --latest \
             --notes "Monthly dataset build. One row per monitoring station per quarter, covering 2010 to present."
