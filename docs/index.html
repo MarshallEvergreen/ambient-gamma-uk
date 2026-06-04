@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>UK Ambient Gamma Radiation Dose Rates</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -11,10 +11,14 @@
 
     body {
       font-family: system-ui, -apple-system, sans-serif;
-      height: 100vh;
+      height: 100dvh;
       display: flex;
       flex-direction: column;
       background: #f5f5f5;
+    }
+
+    .leaflet-bottom {
+      padding-bottom: env(safe-area-inset-bottom);
     }
 
     #controls {
@@ -329,8 +333,12 @@
       const total = periods.length - 1;
 
       // one label per year, positioned at Q1 of that year
+      // skip years to avoid overlap on narrow screens (~32px per label)
       const years = [...new Set(periods.map(p => p.year))];
-      for (const year of years) {
+      const maxLabels = Math.floor(container.offsetWidth / 32);
+      const step = Math.max(1, Math.ceil(years.length / maxLabels));
+      years.forEach((year, i) => {
+        if (i % step !== 0) return;
         const idx = periods.findIndex(p => p.year === year);
         const pct = (idx / total) * 100;
         const span = document.createElement('span');
@@ -339,7 +347,7 @@
         span.textContent = year;
         span.style.left = `${pct}%`;
         container.appendChild(span);
-      }
+      });
     }
 
     // --- playback ---
