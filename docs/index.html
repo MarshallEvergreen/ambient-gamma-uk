@@ -176,9 +176,66 @@
     .legend b { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #555; }
     .legend hr { margin: 5px 0; border: none; border-top: 1px solid #eee; }
     .legend svg { vertical-align: middle; margin-right: 4px; }
+
+    #disclaimer-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      padding: 20px;
+    }
+
+    #disclaimer-box {
+      background: #fff;
+      border-radius: 8px;
+      padding: 24px 28px;
+      max-width: 480px;
+      width: 100%;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+    }
+
+    #disclaimer-box h2 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #222;
+      margin-bottom: 12px;
+    }
+
+    #disclaimer-box p {
+      font-size: 13px;
+      color: #444;
+      line-height: 1.6;
+      margin-bottom: 10px;
+    }
+
+    #disclaimer-box button {
+      margin-top: 8px;
+      width: 100%;
+      padding: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+      background: #1a5fa8;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    #disclaimer-box button:hover { background: #154d8a; }
   </style>
 </head>
 <body>
+  <div id="disclaimer-overlay">
+    <div id="disclaimer-box">
+      <h2>Important Notice</h2>
+      <p>The circle sizes and colours on this map are chosen purely for visual clarity. They <strong>do not indicate any actual radiation risk</strong>. Ambient gamma dose rates across the UK are consistently well within safe limits. Variation between stations reflects natural background differences — geology, altitude, and weather — not hazard levels.</p>
+      <p>This is an independent visualisation of publicly available government data. It is <strong>not affiliated with, endorsed by, or produced in collaboration with</strong> the Department for Energy Security and Net Zero, RREMS, or any other government agency.</p>
+      <button id="disclaimer-btn">I understand — continue</button>
+    </div>
+  </div>
   <div id="controls">
     <div id="header-row">
       <h1>UK Ambient Gamma Radiation Dose Rates</h1>
@@ -403,6 +460,10 @@
 
       render();
     }
+
+    document.getElementById('disclaimer-btn').addEventListener('click', () => {
+      document.getElementById('disclaimer-overlay').remove();
+    });
 
     init().catch(err => {
       document.getElementById('loading').textContent = 'Failed to load dataset.';
