@@ -83,6 +83,16 @@ For the 2010–2021 quarterly files, where only station names are available, the
 
 The result is a unified dataset covering 2010 to the present, with consistent quarterly statistics and geospatial coordinates for every station that was still active in 2025.
 
+## Visualisation
+
+An interactive map of the dataset is available at **[abiemarshall.com/ambient-gamma-uk](https://abiemarshall.com/ambient-gamma-uk)**.
+
+The map displays one circle per monitoring station per quarter. Circle size scales with the mean dose rate recorded at that station in that period; circle colour indicates the ratio of the recorded mean to the station's long-run site normal, ranging from green (at or below normal) through yellow to red (at or above 1.15× normal). Mobile monitors, which have no site normal, are shown in blue.
+
+> **Important:** The size and colour of the circles are chosen purely for visual clarity and **do not indicate any actual radiation risk**. Ambient gamma dose rates across the UK are consistently well within safe limits. Colour changes between stations and over time reflect natural variation in background radiation levels — geology, altitude, and weather all contribute — and should not be interpreted as hazard indicators.
+
+> **Disclaimer:** This project is an independent visualisation of publicly available government data. It is **not affiliated with, endorsed by, or produced in collaboration with** the Department for Energy Security and Net Zero, RREMS, or any other government agency or body.
+
 ## Project Structure
 
 This is a [UV workspace](https://docs.astral.sh/uv/concepts/workspaces/) containing the following packages:
