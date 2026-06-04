@@ -85,7 +85,7 @@ The result is a unified dataset covering 2010 to the present, with consistent qu
 
 ## Visualisation
 
-An interactive map of the dataset is available at **[abiemarshall.com/ambient-gamma-uk](https://abiemarshall.com/ambient-gamma-uk)**.
+An interactive map of the dataset is available at **[abiemarshall.com/ambient-gamma-uk](https://abiemarshall.com/ambient-gamma-uk)**. The dataset and map are regenerated automatically on the 15th of each month to incorporate the latest published data from GOV.UK.
 
 The map displays one circle per monitoring station per quarter. Circle size scales with the mean dose rate recorded at that station in that period; circle colour indicates the ratio of the recorded mean to the station's long-run site normal, ranging from green (at or below normal) through yellow to red (at or above 1.15× normal). Mobile monitors, which have no site normal, are shown in blue.
 
